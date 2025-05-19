@@ -14,17 +14,17 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Inicijalizacija modela
+# Init model
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 
-# Baza embeddinga
+# Embeddings database
 known_face_encodings = []
 known_face_names = []
 faiss_index = None
 
-
+# function to add faces and extract embeddings
 def add_known_face(image_path, name):
     image = cv2.imread(image_path)
     if image is None:
@@ -39,6 +39,7 @@ def add_known_face(image_path, name):
     known_face_encodings.append(normalized)
     known_face_names.append(name)
 
+# function to load dataset embeddings
 def load_dataset():
     count = 0
     for person in os.listdir(dataset_path := "dataset"):
@@ -61,6 +62,7 @@ def load_dataset():
                 count += 1
     print(f"[INFO] Ucitano {count} poznatih lica.")
 
+# build FAISS index using face embeddings
 def build_index():
     global faiss_index
     encodings_np = np.array(known_face_encodings).astype('float32')
@@ -68,6 +70,7 @@ def build_index():
     faiss_index.add(encodings_np)
     print("[INFO] FAISS indeks izgraden.")
 
+# function to classify faces using threshold and voting
 def classify_face(face_embedding, k=5, threshold=0.6):
     D, I = faiss_index.search(np.array([face_embedding]).astype('float32'), k)
     votes = {}
@@ -82,10 +85,10 @@ def classify_face(face_embedding, k=5, threshold=0.6):
     return "Unknown", 0
 
 
-
+# list to log detections
 detection_log = []
 
-
+# classification route
 @app.route("/classify", methods=["POST"])
 def classify_api():
     data = request.get_json()
@@ -107,10 +110,12 @@ def classify_api():
     message = f"node {node_id}: detected {name} [{timestamp}, votes {votes}]"
     return jsonify({"message": message})
 
+# show logs in JSON format
 @app.route("/log", methods=["GET"])
 def view_log():
     return jsonify(detection_log)
 
+# show logs in html
 @app.route("/log/html")
 def view_log_html():
     return """
