@@ -1,3 +1,6 @@
+# node.py
+# to run this: python node.py (n times for n nodes (on separate devices of course))
+# first start server in Docker, then nodes
 import cv2
 import numpy as np
 import torch
