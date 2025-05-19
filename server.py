@@ -174,4 +174,5 @@ def home():
 if __name__ == "__main__":
     load_dataset()
     build_index()
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=6010)
+
