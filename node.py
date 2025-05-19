@@ -8,7 +8,8 @@ from queue import Queue
 from transformers import CLIPProcessor, CLIPModel
 
 # Konfiguracija
-SERVER_URL = "http://localhost:5000/classify"
+SERVER_URL = "http://localhost:6010/classify"
+
 NODE_ID = 1
 SEND_INTERVAL = 1  # sekundi između slanja
 
