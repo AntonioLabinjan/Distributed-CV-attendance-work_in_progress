@@ -10,13 +10,13 @@ import time
 from queue import Queue
 from transformers import CLIPProcessor, CLIPModel
 
-# Konfiguracija
+# Config
 SERVER_URL = "http://localhost:6010/classify"
 
 NODE_ID = 1
-SEND_INTERVAL = 1  # sekundi između slanja
+SEND_INTERVAL = 1  # seconds in sending interval
 
-# Model i uređaj
+# Model & device
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
@@ -25,7 +25,7 @@ model.eval()
 # Haar Cascade
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Queue i stanje
+# Queue and state management
 embedding_queue = Queue()
 last_message = "node 0: detected Unknown [--]"
 last_message_lock = threading.Lock()
@@ -37,11 +37,11 @@ def classify_worker():
     while True:
         embedding = embedding_queue.get()
         if embedding is None:
-            break  # izlazak iz threada
+            break  # leave the thread
 
         now = time.time()
         if now - last_sent_time < SEND_INTERVAL:
-            continue  # prebrzo slanje, preskoči
+            continue  # don't spam the server
 
         try:
             response = requests.post(SERVER_URL, json={"embedding": embedding.tolist(), "node_id": NODE_ID}, timeout=2)
@@ -56,10 +56,10 @@ def classify_worker():
 
         last_sent_time = time.time()
 
-# Pokreni worker thread
+# Start worker thread
 threading.Thread(target=classify_worker, daemon=True).start()
 
-# Kamera
+# Camera
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -77,7 +77,7 @@ while True:
         if face.size == 0:
             continue
 
-        # Ekstrakcija embeddinga
+        # Extract embeddings
         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
         inputs = processor(images=face_rgb, return_tensors="pt").to(device)
         with torch.no_grad():
@@ -85,11 +85,11 @@ while True:
         embedding = outputs.cpu().numpy().flatten()
         embedding /= np.linalg.norm(embedding)
 
-        # Pošalji embedding u queue za obradu
-        if embedding_queue.qsize() < 3:  # spriječi pretrpavanje
+        # Send embeddings to queue for further processing
+        if embedding_queue.qsize() < 3:  # don't overload
             embedding_queue.put(embedding)
 
-        # Nacrtaj lice i ispiši poruku
+        # Make bounding box with class label
         with last_message_lock:
             display_message = last_message
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -102,4 +102,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-embedding_queue.put(None)  # zaustavi worker thread
+embedding_queue.put(None)  # stop worker thread
