@@ -3,3 +3,5 @@ Render me ne voli :(
 - todo:
 - pole tega deployat image na render => TRIBAT ĆE NEKAMO DRUGAMO
 - u app kodu za node ganbjat server url
+
+Stvar dela z više kamera ... woohooo
