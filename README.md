@@ -6,6 +6,7 @@ Render me ne voli :( => FUCK RENDER; sve će delat lokalno iz dockera
 
 Stvar dela z više kamera ... woohooo
 
-IDEA: check if face is known (identify it implicit; do not label the class public) => if it is known => grant access
-                                                                                  => if it is unknown => first 2 times => warning
-                                                                                                      => third time => INTRUDER ALERT
+IDEA: check if face is known (identify it implicit; do not label the class public) 
+- => if it is known => grant access
+- => if it is unknown => first 2 times => warning
+- => third time => INTRUDER ALERT
