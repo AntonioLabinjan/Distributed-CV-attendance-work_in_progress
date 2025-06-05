@@ -10,3 +10,4 @@ IDEA: check if face is known (identify it implicit; do not label the class publi
 - => if it is known => grant access
 - => if it is unknown => first 2 times => warning
 - => third time => INTRUDER ALERT
+- ali isto provjeravat dali je neko nepoznato lice bilo više puta (na više nodeova) ; npr. Ako si agregirano na k nodesa bija više od 3 puta -> that means da se neki sumnjiv mota na okolo
