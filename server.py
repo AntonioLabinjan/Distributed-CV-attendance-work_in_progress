@@ -1,4 +1,5 @@
 # server.py
+# to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
 # to run this: docker run -p 6010:6010 face-rec-central_server_6010
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -14,17 +15,17 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Init model
+# Inicijalizacija modela
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 
-# Embeddings database
+# Baza embeddinga
 known_face_encodings = []
 known_face_names = []
 faiss_index = None
 
-# function to add faces and extract embeddings
+
 def add_known_face(image_path, name):
     image = cv2.imread(image_path)
     if image is None:
@@ -39,7 +40,6 @@ def add_known_face(image_path, name):
     known_face_encodings.append(normalized)
     known_face_names.append(name)
 
-# function to load dataset embeddings
 def load_dataset():
     count = 0
     for person in os.listdir(dataset_path := "dataset"):
@@ -62,7 +62,6 @@ def load_dataset():
                 count += 1
     print(f"[INFO] Ucitano {count} poznatih lica.")
 
-# build FAISS index using face embeddings
 def build_index():
     global faiss_index
     encodings_np = np.array(known_face_encodings).astype('float32')
@@ -70,7 +69,7 @@ def build_index():
     faiss_index.add(encodings_np)
     print("[INFO] FAISS indeks izgraden.")
 
-# function to classify faces using threshold and voting
+'''
 def classify_face(face_embedding, k=5, threshold=0.6):
     D, I = faiss_index.search(np.array([face_embedding]).astype('float32'), k)
     votes = {}
@@ -83,12 +82,28 @@ def classify_face(face_embedding, k=5, threshold=0.6):
         winner = max(votes, key=votes.get)
         return winner, votes[winner]
     return "Unknown", 0
+'''
+
+def classify_face(face_embedding, k=5, threshold=0.6):
+    D, I = faiss_index.search(np.array([face_embedding]).astype('float32'), k)
+    votes = {}
+    for idx, dist in zip(I[0], D[0]):
+        if dist > threshold:
+            continue
+        name = known_face_names[idx]
+        # Težina se računa kao 1 / (distanca + epsilon) da izbjegnemo djeljenje s nulom
+        weight = 1.0 / (dist + 1e-6)
+        votes[name] = votes.get(name, 0) + weight
+    if votes:
+        winner = max(votes, key=votes.get)
+        return winner, round(votes[winner], 2)
+    return "Unknown", 0
 
 
-# list to log detections
+
 detection_log = []
 
-# classification route
+
 @app.route("/classify", methods=["POST"])
 def classify_api():
     data = request.get_json()
@@ -110,12 +125,10 @@ def classify_api():
     message = f"node {node_id}: detected {name} [{timestamp}, votes {votes}]"
     return jsonify({"message": message})
 
-# show logs in JSON format
 @app.route("/log", methods=["GET"])
 def view_log():
     return jsonify(detection_log)
 
-# show logs in html
 @app.route("/log/html")
 def view_log_html():
     return """
@@ -138,7 +151,7 @@ def view_log_html():
                 <tr>
                     <th>Timestamp</th>
                     <th>Ime</th>
-                    <th>Glasovi</th>
+                    <th>Score</th>
                     <th>Node ID</th>
                 </tr>
             </thead>
@@ -146,6 +159,13 @@ def view_log_html():
         </table>
 
         <script>
+            function getScoreColor(score) {
+                if (score >= 6) return '#b3e5fc';  // Plava - ROKAČINA
+                if (score >= 4) return '#c8e6c9';  // Zelena - Jako sigurno
+                if (score >= 2) return '#fff9c4';  // Žuta - Srednje
+                return '#ffcdd2';                  // Crvena - Nisko
+            }
+
             async function fetchLog() {
                 const res = await fetch("/log");
                 const data = await res.json();
@@ -154,10 +174,11 @@ def view_log_html():
 
                 data.slice().forEach(entry => {
                     const row = document.createElement("tr");
+                    const scoreColor = getScoreColor(entry.votes);
                     row.innerHTML = `
                         <td>${entry.timestamp}</td>
                         <td>${entry.name}</td>
-                        <td>${entry.votes}</td>
+                        <td style="background-color: ${scoreColor}; font-weight: bold;">${entry.votes.toFixed(2)}</td>
                         <td>${entry.node_id}</td>
                     `;
                     tbody.appendChild(row);
@@ -170,6 +191,7 @@ def view_log_html():
     </body>
     </html>
     """
+
 
 
 @app.route("/")
