@@ -75,4 +75,3 @@
 
 ---
 
-Ako želiš, mogu ti pomoći i s pripremom slajdova ili pitch teksta za prezentaciju! Kako ti zvuči?
