@@ -16,7 +16,7 @@ SERVER_URL = "http://localhost:6010/classify"
 #SERVER_URL = "http://172.17.0.4:6010/classify"
 
 NODE_ID = 0
-SEND_INTERVAL = 1  # sekundi između slanja
+SEND_INTERVAL = 1.5  # sekundi između slanja
 
 # Model i uređaj
 device = "cuda" if torch.cuda.is_available() else "cpu"
