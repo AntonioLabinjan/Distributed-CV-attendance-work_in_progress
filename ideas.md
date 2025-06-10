@@ -75,3 +75,4 @@
 
 ---
 
+Takat se na deepface i onda pratit i emocije pa neki k s tin
