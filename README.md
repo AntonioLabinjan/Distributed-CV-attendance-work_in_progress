@@ -1,3 +1,5 @@
+Moran napravit website, bez tega nič
+
 Dockerhub deployment: https://hub.docker.com/repository/docker/antoniolabinjan/face-rec-central_server/general
 Render me ne voli :( => FUCK RENDER; sve će delat lokalno iz dockera
 - todo:
