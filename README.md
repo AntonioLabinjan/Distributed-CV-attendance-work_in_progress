@@ -7,6 +7,13 @@ Render me ne voli :( => FUCK RENDER; sve će delat lokalno iz dockera
 - u app kodu za node ganbjat server url
 
 Stvar dela z više kamera ... woohooo
+I s više osoba...ALI:
+### Kamere i node konfiguracija
+
+- Svaka kamera (node) je namijenjena skeniranju **jedne osobe istovremeno** za optimalnu točnost prepoznavanja.
+- Ako se u istom kadru pojavi više lica, može doći do **nestabilnosti u detekciji i embeddingima** zbog preklapanja i trzanja frameova.
+- Preporučeno je koristiti **više nodeova s fizički odvojenim kamerama**, gdje svaki pokriva zasebnu osobu ili ulaznu točku.
+
 
 IDEA: check if face is known (identify it implicit; do not label the class public) 
 - => if it is known => grant access
