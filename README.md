@@ -15,8 +15,4 @@ I s više osoba...ALI:
 - Preporučeno je koristiti **više nodeova s fizički odvojenim kamerama**, gdje svaki pokriva zasebnu osobu ili ulaznu točku.
 
 
-IDEA: check if face is known (identify it implicit; do not label the class public) 
-- => if it is known => grant access
-- => if it is unknown => first 2 times => warning
-- => third time => INTRUDER ALERT
-- ali isto provjeravat dali je neko nepoznato lice bilo više puta (na više nodeova) ; npr. Ako si agregirano na k nodesa bija više od 3 puta -> that means da se neki sumnjiv mota na okolo
+UPDT => čeka se da poštin dopelje kameru, pa onda rokamo : https://www.links.hr/hr/web-kamera-logitech-hd-webcam-c270-102500052
