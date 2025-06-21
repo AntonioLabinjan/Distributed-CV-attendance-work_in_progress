@@ -1,6 +1,4 @@
 # node.py
-# to run this: python node.py (n times for n nodes (on separate devices of course))
-# first start server in Docker, then nodes
 import cv2
 import numpy as np
 import torch
@@ -9,14 +7,14 @@ import threading
 import time
 from queue import Queue
 from transformers import CLIPProcessor, CLIPModel
+from scipy.spatial.distance import cosine  
+
+
 
 # Konfiguracija
 SERVER_URL = "http://localhost:6010/classify"
-
-#SERVER_URL = "http://172.17.0.4:6010/classify"
-
 NODE_ID = 0
-SEND_INTERVAL = 1.5  # sekundi između slanja
+DIFF_THRESHOLD = 0.2  # prag za slanje (ča manji = osjetljivije)
 
 # Model i uređaj
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -29,21 +27,16 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 
 # Queue i stanje
 embedding_queue = Queue()
-last_message = "node 0: detected Unknown [--]"
+last_message = f"node {NODE_ID}: detected Unknown [--]"
 last_message_lock = threading.Lock()
+last_embedding = None  # za usporedbu s prethodnim
 
 def classify_worker():
     global last_message
-    last_sent_time = 0
-
     while True:
         embedding = embedding_queue.get()
         if embedding is None:
             break  # izlazak iz threada
-
-        now = time.time()
-        if now - last_sent_time < SEND_INTERVAL:
-            continue  # prebrzo slanje, preskoči
 
         try:
             response = requests.post(SERVER_URL, json={"embedding": embedding.tolist(), "node_id": NODE_ID}, timeout=2)
@@ -55,8 +48,6 @@ def classify_worker():
                 print("Greška u odgovoru sa servera.")
         except Exception as e:
             print("Greška pri slanju na server:", e)
-
-        last_sent_time = time.time()
 
 # Pokreni worker thread
 threading.Thread(target=classify_worker, daemon=True).start()
@@ -87,9 +78,11 @@ while True:
         embedding = outputs.cpu().numpy().flatten()
         embedding /= np.linalg.norm(embedding)
 
-        # Pošalji embedding u queue za obradu
-        if embedding_queue.qsize() < 3:  # spriječi pretrpavanje
-            embedding_queue.put(embedding)
+        # Pametno slanje samo ako je različito od prošlog
+        if last_embedding is None or cosine(embedding, last_embedding) > DIFF_THRESHOLD:
+            if embedding_queue.qsize() < 3:  # spriječi pretrpavanje
+                embedding_queue.put(embedding)
+                last_embedding = embedding  # ažuriraj
 
         # Nacrtaj lice i ispiši poruku
         with last_message_lock:
