@@ -1,0 +1,1 @@
+Nodes now only show if embedding is recieved, and names are logged on server-side; no one can see class name except of server owners
