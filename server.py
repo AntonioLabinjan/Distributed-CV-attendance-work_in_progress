@@ -1,17 +1,22 @@
 # server.py
 # to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
 # to run this: docker run -p 6010:6010 face-rec-central_server_6010
+# server.py
+# to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
+# to run this: docker run -p 6010:6010 face-rec-central_server_6010
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 
-from flask import Flask, request, jsonify, Response, redirect, url_for
+from flask import Flask, request, jsonify, redirect, url_for
 import torch
 import numpy as np
 import faiss
 from transformers import CLIPProcessor, CLIPModel
 import cv2
 from datetime import datetime
+from queue import Queue
+import threading
 
 app = Flask(__name__)
 
@@ -19,13 +24,18 @@ app = Flask(__name__)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
+model.eval()
 
 # Baza embeddinga
 known_face_encodings = []
 known_face_names = []
 faiss_index = None
 
+# Log i queue
+detection_log = []
+embedding_queue = Queue()
 
+# === Dataset i FAISS ===
 def add_known_face(image_path, name):
     image = cv2.imread(image_path)
     if image is None:
@@ -42,56 +52,39 @@ def add_known_face(image_path, name):
 
 def load_dataset():
     count = 0
-    for person in os.listdir(dataset_path := "dataset"):
+    dataset_path = "dataset"
+    for person in os.listdir(dataset_path):
         person_path = os.path.join(dataset_path, person)
         if not os.path.isdir(person_path):
             continue
-
         for subdir in os.listdir(person_path):
             subdir_path = os.path.join(person_path, subdir)
             if not os.path.isdir(subdir_path):
                 continue
-
             for img_file in os.listdir(subdir_path):
                 if not img_file.lower().endswith(('.png', '.jpg', '.jpeg')):
                     continue
                 img_path = os.path.join(subdir_path, img_file)
-                if not os.path.isfile(img_path):
-                    continue
-                add_known_face(img_path, person)
-                count += 1
-    print(f"[INFO] Ucitano {count} poznatih lica.")
+                if os.path.isfile(img_path):
+                    add_known_face(img_path, person)
+                    count += 1
+    print(f"[INFO] Učitano {count} poznatih lica.")
 
 def build_index():
     global faiss_index
     encodings_np = np.array(known_face_encodings).astype('float32')
     faiss_index = faiss.IndexFlatL2(encodings_np.shape[1])
     faiss_index.add(encodings_np)
-    print("[INFO] FAISS indeks izgraden.")
+    print("[INFO] FAISS indeks izgrađen.")
 
-'''
-def classify_face(face_embedding, k=5, threshold=0.6):
+# === Klasifikacija ===
+def classify_face(face_embedding, k=7, threshold=0.7):
     D, I = faiss_index.search(np.array([face_embedding]).astype('float32'), k)
     votes = {}
     for idx, dist in zip(I[0], D[0]):
         if dist > threshold:
             continue
         name = known_face_names[idx]
-        votes[name] = votes.get(name, 0) + 1
-    if votes:
-        winner = max(votes, key=votes.get)
-        return winner, votes[winner]
-    return "Unknown", 0
-'''
-
-def classify_face(face_embedding, k=5, threshold=0.6):
-    D, I = faiss_index.search(np.array([face_embedding]).astype('float32'), k)
-    votes = {}
-    for idx, dist in zip(I[0], D[0]):
-        if dist > threshold:
-            continue
-        name = known_face_names[idx]
-        # Težina se računa kao 1 / (distanca + epsilon) da izbjegnemo djeljenje s nulom
         weight = 1.0 / (dist + 1e-6)
         votes[name] = votes.get(name, 0) + weight
     if votes:
@@ -99,31 +92,36 @@ def classify_face(face_embedding, k=5, threshold=0.6):
         return winner, round(votes[winner], 2)
     return "Unknown", 0
 
+# === Worker koji obrađuje queue ===
+def classify_worker():
+    while True:
+        item = embedding_queue.get()
+        if item is None:
+            break  # shutdown
+        embedding, node_id = item
+        name, votes = classify_face(embedding)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = {
+            "timestamp": timestamp,
+            "name": name,
+            "votes": votes,
+            "node_id": node_id
+        }
+        detection_log.append(log_entry)
 
+worker_thread = threading.Thread(target=classify_worker, daemon=True)
+worker_thread.start()
 
-detection_log = []
-
-
+# === Flask routes ===
 @app.route("/classify", methods=["POST"])
 def classify_api():
     data = request.get_json()
     embedding = np.array(data["embedding"])
     embedding /= np.linalg.norm(embedding)
-    name, votes = classify_face(embedding)
-    
     node_id = data.get("node_id", 0)
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    log_entry = {
-        "timestamp": timestamp,
-        "name": name,
-        "votes": votes,
-        "node_id": node_id
-    }
-    detection_log.append(log_entry)
 
-    message = f"node {node_id}: detected {name} [{timestamp}, votes {votes}]"
-    return jsonify({"message": message})
+    embedding_queue.put((embedding, node_id))
+    return jsonify({"message": f"node {node_id}: embedding received"})
 
 @app.route("/log", methods=["GET"])
 def view_log():
@@ -160,10 +158,10 @@ def view_log_html():
 
         <script>
             function getScoreColor(score) {
-                if (score >= 6) return '#b3e5fc';  // Plava - ROKAČINA
-                if (score >= 4) return '#c8e6c9';  // Zelena - Jako sigurno
-                if (score >= 2) return '#fff9c4';  // Žuta - Srednje
-                return '#ffcdd2';                  // Crvena - Nisko
+                if (score >= 6) return '#b3e5fc';
+                if (score >= 4) return '#c8e6c9';
+                if (score >= 2) return '#fff9c4';
+                return '#ffcdd2';
             }
 
             async function fetchLog() {
@@ -171,8 +169,7 @@ def view_log_html():
                 const data = await res.json();
                 const tbody = document.querySelector("#logTable tbody");
                 tbody.innerHTML = "";
-
-                data.slice().forEach(entry => {
+                data.forEach(entry => {
                     const row = document.createElement("tr");
                     const scoreColor = getScoreColor(entry.votes);
                     row.innerHTML = `
@@ -185,22 +182,18 @@ def view_log_html():
                 });
             }
 
-            setInterval(fetchLog, 1000); // osvježi svakih 1 sekundu
-            fetchLog(); // odmah prvi put
+            setInterval(fetchLog, 1000);
+            fetchLog();
         </script>
     </body>
     </html>
     """
 
-
-
 @app.route("/")
 def home():
     return redirect(url_for("view_log_html"))
-
 
 if __name__ == "__main__":
     load_dataset()
     build_index()
     app.run(host="0.0.0.0", port=6010)
-
