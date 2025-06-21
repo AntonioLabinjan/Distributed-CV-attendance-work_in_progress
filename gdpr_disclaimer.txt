@@ -1,1 +1,2 @@
 Nodes now only show if embedding is recieved, and names are logged on server-side; no one can see class name except of server owners
+As classification is done on server, nodes basically just see a bunch of random numbers (embeddings)
