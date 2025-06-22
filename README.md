@@ -1,18 +1,214 @@
+# Distributed Face Recognition System (CLIP + FAISS)
+
+This repository contains a scalable system for distributed face recognition using multiple client nodes and a central server. Each node extracts face embeddings using a CLIP model and sends them to the server, which handles classification and logging using a FAISS index of known faces.
+
+---
+
+## Table of Contents
+
+* [Overview](#overview)
+* [System Architecture](#system-architecture)
+* [Core Components](#core-components)
+* [Technology Stack](#technology-stack)
+* [Setup and Usage](#setup-and-usage)
+
+  * [1. Running the Central Server](#1-running-the-central-server)
+  * [2. Running a Node](#2-running-a-node)
+* [Data Flow](#data-flow)
+* [Design Principles](#design-principles)
+* [Privacy and Security](#privacy-and-security)
+* [Logging Interface](#logging-interface)
+* [Example Outputs](#example-outputs)
+* [Future Improvements](#future-improvements)
+
+---
+
+## Overview
+
+This project enables face recognition in a distributed setting where low-cost client nodes perform local embedding extraction and offload classification to a centralized server. The system is designed to be:
+
+* **Lightweight on edge devices**
+* **Scalable across multiple clients**
+* **Centralized for efficient indexing and classification**
+* **Privacy-aware**, avoiding raw image transfer
+
+---
+
+## System Architecture
+
+The system is composed of the following key components:
+
+* **Nodes (Clients):** Capture face images using webcams and extract face embeddings using the CLIP model.
+* **Embedding Queue:** Located on the server; acts as middleware between the nodes and the classification service, ensuring fair and stable request handling.
+* **Central Server:** Hosts the face embedding database, performs nearest neighbor search via FAISS, classifies embeddings, and logs recognition results.
+
+### Architecture Diagram
+
+> Replace the image below with your architecture diagram
+
+```
+[Insert your architecture diagram here, e.g., docs/images/architecture.png]
+```
+
+---
+
+## Core Components
+
+### Nodes
+
+Each node is responsible for:
+
+* Capturing webcam input in real-time
+* Detecting faces using Haar cascades
+* Generating normalized CLIP embeddings
+* Avoiding redundant transmissions by comparing embeddings with the previous one
+* Sending new embeddings to the server for classification
+
+### Embedding Queue (Server-side)
+
+* Ensures **balanced and sequential processing** of requests from all nodes
+* Acts as a **load balancer and buffer**, protecting the server from bursts of requests
+* Located on the server and managed using Python’s `Queue` module and a background thread
+
+### Central Server
+
+* Loads all known faces from a structured dataset at startup
+* Builds a **FAISS index** from the embeddings
+* Classifies incoming embeddings via **k-nearest neighbor search**
+* Logs results with timestamps, node ID, predicted name, and confidence score
+* Provides a live **HTML interface** for monitoring detections
+
+---
+
+## Technology Stack
+
+| Component        | Technology                            |
+| ---------------- | ------------------------------------- |
+| Embedding Model  | CLIP (`openai/clip-vit-base-patch32`) |
+| Classifier       | FAISS (L2 similarity search)          |
+| Web Interface    | Flask + JavaScript                    |
+| Face Detection   | OpenCV Haar Cascade                   |
+| Communication    | HTTP (JSON over REST API)             |
+| Parallelism      | Python threading + Queue module       |
+| Containerization | Docker (for server deployment)        |
+
+---
+
+## Setup and Usage
+
+### 1. Running the Central Server
+
+You can run the central server directly or via Docker.
+
+**Option A: Docker (Recommended)**
+
+```bash
+docker pull antoniolabinjan/face-rec-central_server:latest
+docker run -p 6010:6010 -v $(pwd)/dataset:/app/dataset antoniolabinjan/face-rec-central_server:latest
+```
+
+> Ensure the dataset is available locally in the structure:
+> `dataset/<person_name>/<subdir>/<images>.jpg`
+
+**Option B: Manual (Python)**
+
+```bash
+pip install -r requirements.txt
+python server.py
+```
+
+### 2. Running a Node
+
+```bash
+python node.py
+```
+
+Each node will:
+
+* Start webcam capture
+* Detect faces
+* Generate embeddings using CLIP
+* Send embeddings only when significantly different from the last one
+
+---
+
+## Data Flow
+
+1. Each node detects a face → extracts an embedding.
+2. Embedding is sent via POST to `/classify` on the server.
+3. Server enqueues the request for processing.
+4. A background thread processes embeddings sequentially:
+
+   * Classification using FAISS
+   * Result stored in `detection_log`
+5. Server responds with formatted message (e.g., `node 2: detected John Doe`).
+
+---
+
+## Design Principles
+
+* **Separation of concerns:** Nodes only extract embeddings; classification is centralized.
+* **Fairness:** Queue ensures balanced handling across all nodes.
+* **Efficiency:** No image transfer, just vector data.
+* **Responsiveness:** Live updates via `/log/html`.
+
+---
+
+## Privacy and Security
+
+* No images or video frames are transmitted over the network.
+* Only normalized face embeddings (numeric vectors) are sent.
+* All classification and identity resolution happens server-side.
+* This design supports **GDPR-compliant** face recognition deployments.
+
+---
+
+## Logging Interface
+
+Live classification results can be accessed at:
+
+```
+http://<server_ip>:6010/log/html
+```
+
+> Replace with actual IP if not running locally.
+
+Output includes timestamp, predicted name, score, and node ID. Rows are color-coded based on confidence.
+
+---
+
+## Example Outputs
+
+> Add a screenshot of the `/log/html` interface here.
+
+```
+[Insert live log screenshot here: docs/images/live_log.png]
+```
+
+---
+
+## Future Improvements
+
+* WebSocket-based real-time communication
+* Embedded SQLite/DB backend for persistent logging
+* Centralized monitoring dashboard
+* Add authentication per node
+* Auto-retraining of face database from new captures
+
+---
+
+## License
+
+This project is distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+## Maintainer
+
+Antonio Labinjan
+[GitHub: AntonioLabinjan](https://github.com/AntonioLabinjan)
+
+UPDT => čeka se da poštin dopelje kameru, pa onda rokamo : https://www.links.hr/hr/web-kamera-logitech-hd-webcam-c270-102500052
 Moran napravit website, bez tega nič
 
 Dockerhub deployment: https://hub.docker.com/repository/docker/antoniolabinjan/face-rec-central_server/general
-Render me ne voli :( => FUCK RENDER; sve će delat lokalno iz dockera
-- todo:
-- pole tega deployat image na render => TRIBAT ĆE NEKAMO DRUGAMO
-- u app kodu za node ganbjat server url
-
-Stvar dela z više kamera ... woohooo
-I s više osoba...ALI:
-### Kamere i node konfiguracija
-
-- Svaka kamera (node) je namijenjena skeniranju **jedne osobe istovremeno** za optimalnu točnost prepoznavanja.
-- Ako se u istom kadru pojavi više lica, može doći do **nestabilnosti u detekciji i embeddingima** zbog preklapanja i trzanja frameova.
-- Preporučeno je koristiti **više nodeova s fizički odvojenim kamerama**, gdje svaki pokriva zasebnu osobu ili ulaznu točku.
-- nacrtat ću idealni use case
-
-UPDT => čeka se da poštin dopelje kameru, pa onda rokamo : https://www.links.hr/hr/web-kamera-logitech-hd-webcam-c270-102500052
