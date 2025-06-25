@@ -1,3 +1,5 @@
+Should add image segmentation to remove background "noise" 
+
 # Distributed Face Recognition System (CLIP + FAISS)
 
 This repository contains a scalable system for distributed face recognition using multiple client nodes and a central server. Each node extracts face embeddings using a CLIP model and sends them to the server, which handles classification and logging using a FAISS index of known faces.
