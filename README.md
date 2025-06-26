@@ -1,5 +1,3 @@
-Should add image segmentation to remove background "noise" 
-
 # Distributed Face Recognition System (CLIP + FAISS)
 
 This repository contains a scalable system for distributed face recognition using multiple client nodes and a central server. Each node extracts face embeddings using a CLIP model and sends them to the server, which handles classification and logging using a FAISS index of known faces.
@@ -33,6 +31,8 @@ This project enables face recognition in a distributed setting where low-cost cl
 * **Scalable across multiple clients**
 * **Centralized for efficient indexing and classification**
 * **Privacy-aware**, avoiding raw image transfer
+* **Face segmentation:** Nodes apply MediaPipe Face Mesh segmentation to isolate the face region within the detected bounding box before embedding extraction, improving embedding quality by removing background noise.
+
 
 ---
 
@@ -62,6 +62,7 @@ Each node is responsible for:
 
 * Capturing webcam input in real-time
 * Detecting faces using Haar cascades
+* Segmenting detected faces with MediaPipe Face Mesh to mask out background pixels inside the face region
 * Generating normalized CLIP embeddings
 * Avoiding redundant transmissions by comparing embeddings with the previous one
 * Sending new embeddings to the server for classification
@@ -137,13 +138,14 @@ Each node will:
 ## Data Flow
 
 1. Each node detects a face → extracts an embedding.
-2. Embedding is sent via POST to `/classify` on the server.
-3. Server enqueues the request for processing.
-4. A background thread processes embeddings sequentially:
+2. Segments the face region using MediaPipe Face Mesh to remove background pixels within the face bounding box
+3. Embedding is sent via POST to `/classify` on the server.
+4. Server enqueues the request for processing.
+5. A background thread processes embeddings sequentially:
 
    * Classification using FAISS
    * Result stored in `detection_log`
-5. Server responds with formatted message (e.g., `node 2: detected John Doe`).
+6. Server responds with formatted message (e.g., `node 2: detected John Doe`).
 
 ---
 
@@ -210,7 +212,6 @@ This project is distributed under the MIT License. See `LICENSE` for more inform
 Antonio Labinjan
 [GitHub: AntonioLabinjan](https://github.com/AntonioLabinjan)
 
-UPDT => čeka se da poštin dopelje kameru, pa onda rokamo : https://www.links.hr/hr/web-kamera-logitech-hd-webcam-c270-102500052
 Moran napravit website, bez tega nič
 
 Dockerhub deployment: https://hub.docker.com/repository/docker/antoniolabinjan/face-rec-central_server/general
