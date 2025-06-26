@@ -8,35 +8,59 @@ import time
 from queue import Queue
 from transformers import CLIPProcessor, CLIPModel
 from scipy.spatial.distance import cosine  
+import mediapipe as mp
 
 
-
-# Konfiguracija
+# Configuration
 SERVER_URL = "http://localhost:6010/classify"
 NODE_ID = 0
-DIFF_THRESHOLD = 0.2  # prag za slanje (ča manji = osjetljivije)
+DIFF_THRESHOLD = 0.2  # threshold for sending embedding (lower = more sensitive)
 
-# Model i uređaj
+# Model and device
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 model.eval()
 
-# Haar Cascade
+# Haar Cascade for face detection
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Queue i stanje
+# MediaPipe Face Mesh for segmentation
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refine_landmarks=True)
+
+# Queue and state
 embedding_queue = Queue()
 last_message = f"node {NODE_ID}: detected Unknown [--]"
 last_message_lock = threading.Lock()
-last_embedding = None  # za usporedbu s prethodnim
+last_embedding = None  # for comparison with previous embedding
+
+
+def segment_face(image_rgb):
+    """Segment face area using MediaPipe Face Mesh and return masked image."""
+    results = face_mesh.process(image_rgb)
+    if not results.multi_face_landmarks:
+        return None
+
+    mask = np.zeros(image_rgb.shape[:2], dtype=np.uint8)
+    h, w = mask.shape
+
+    landmarks = results.multi_face_landmarks[0].landmark
+    points = [(int(lm.x * w), int(lm.y * h)) for lm in landmarks]
+
+    hull = cv2.convexHull(np.array(points))
+    cv2.fillConvexPoly(mask, hull, 255)
+
+    segmented_face = cv2.bitwise_and(image_rgb, image_rgb, mask=mask)
+    return segmented_face
+
 
 def classify_worker():
     global last_message
     while True:
         embedding = embedding_queue.get()
         if embedding is None:
-            break  # izlazak iz threada
+            break  # exit thread
 
         try:
             response = requests.post(SERVER_URL, json={"embedding": embedding.tolist(), "node_id": NODE_ID}, timeout=2)
@@ -45,14 +69,15 @@ def classify_worker():
                 with last_message_lock:
                     last_message = data.get("message", last_message)
             else:
-                print("Greška u odgovoru sa servera.")
+                print("Error response from server.")
         except Exception as e:
-            print("Greška pri slanju na server:", e)
+            print("Error sending to server:", e)
 
-# Pokreni worker thread
+
+# Start worker thread
 threading.Thread(target=classify_worker, daemon=True).start()
 
-# Kamera
+# Camera setup
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -70,21 +95,28 @@ while True:
         if face.size == 0:
             continue
 
-        # Ekstrakcija embeddinga
+        # Convert to RGB
         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-        inputs = processor(images=face_rgb, return_tensors="pt").to(device)
+
+        # Segment the face to remove background inside face ROI
+        segmented_face = segment_face(face_rgb)
+        if segmented_face is None:
+            continue  # no face mesh detected
+
+        # Extract embedding from segmented face
+        inputs = processor(images=segmented_face, return_tensors="pt").to(device)
         with torch.no_grad():
             outputs = model.get_image_features(**inputs)
         embedding = outputs.cpu().numpy().flatten()
         embedding /= np.linalg.norm(embedding)
 
-        # Pametno slanje samo ako je različito od prošlog
+        # Send only if embedding is different enough from last sent embedding
         if last_embedding is None or cosine(embedding, last_embedding) > DIFF_THRESHOLD:
-            if embedding_queue.qsize() < 3:  # spriječi pretrpavanje
+            if embedding_queue.qsize() < 3:  # prevent overload
                 embedding_queue.put(embedding)
-                last_embedding = embedding  # ažuriraj
+                last_embedding = embedding
 
-        # Nacrtaj lice i ispiši poruku
+        # Draw rectangle and message
         with last_message_lock:
             display_message = last_message
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -97,4 +129,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-embedding_queue.put(None)  # zaustavi worker thread
+embedding_queue.put(None)  # stop worker thread
