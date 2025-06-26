@@ -9,6 +9,7 @@ import threading
 import time
 from queue import Queue
 from transformers import CLIPProcessor, CLIPModel
+import mediapipe as mp  # <-- added for segmentation
 
 # Konfiguracija
 SERVER_URL = "http://localhost:6010/classify"
@@ -27,10 +28,32 @@ model.eval()
 # Haar Cascade
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
+# MediaPipe Face Mesh for segmentation
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refine_landmarks=True)
+
 # Queue i stanje
 embedding_queue = Queue()
 last_message = "node 1: detected Unknown [--]"
 last_message_lock = threading.Lock()
+
+def segment_face(image_rgb):
+    """Segment face area using MediaPipe Face Mesh and return masked image."""
+    results = face_mesh.process(image_rgb)
+    if not results.multi_face_landmarks:
+        return None
+
+    mask = np.zeros(image_rgb.shape[:2], dtype=np.uint8)
+    h, w = mask.shape
+
+    landmarks = results.multi_face_landmarks[0].landmark
+    points = [(int(lm.x * w), int(lm.y * h)) for lm in landmarks]
+
+    hull = cv2.convexHull(np.array(points))
+    cv2.fillConvexPoly(mask, hull, 255)
+
+    segmented_face = cv2.bitwise_and(image_rgb, image_rgb, mask=mask)
+    return segmented_face
 
 def classify_worker():
     global last_message
@@ -79,9 +102,16 @@ while True:
         if face.size == 0:
             continue
 
-        # Ekstrakcija embeddinga
+        # Convert to RGB for MediaPipe and CLIP
         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-        inputs = processor(images=face_rgb, return_tensors="pt").to(device)
+
+        # Segment the face to remove background inside face ROI
+        segmented_face = segment_face(face_rgb)
+        if segmented_face is None:
+            continue  # no face mesh detected, skip
+
+        # Extract embedding from segmented face
+        inputs = processor(images=segmented_face, return_tensors="pt").to(device)
         with torch.no_grad():
             outputs = model.get_image_features(**inputs)
         embedding = outputs.cpu().numpy().flatten()
