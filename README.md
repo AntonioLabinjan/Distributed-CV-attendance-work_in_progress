@@ -80,6 +80,9 @@ Each node is responsible for:
 * Classifies incoming embeddings via **k-nearest neighbor search**
 * Logs results with timestamps, node ID, predicted name, and confidence score
 * Provides a live **HTML interface** for monitoring detections
+* Automatically reloads all known faces and rebuilds the FAISS index on startup, ensuring the system always uses the latest dataset structure without requiring manual refresh.
+
+
 
 ---
 
