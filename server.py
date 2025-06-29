@@ -191,6 +191,16 @@ def home():
     return redirect(url_for("view_log_html"))
 
 if __name__ == "__main__":
+    # Očisti stare podatke u slučaju reloadanja
+    known_face_encodings.clear()
+    known_face_names.clear()
+
+    print("[INIT] Učitavanje poznatih lica...")
     load_dataset()
+
+    print("[INIT] Gradnja FAISS indeksa...")
     build_index()
+
+    print("[INIT] Server pokrenut na portu 6010.")
     app.run(host="0.0.0.0", port=6010)
+
