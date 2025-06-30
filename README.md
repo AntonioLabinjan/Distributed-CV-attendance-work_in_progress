@@ -224,17 +224,10 @@ Provides JSON summary of successful recognitions per threshold (auto-updated liv
 
 ---
 
-## License
-
-This project is distributed under the MIT License. See `LICENSE` for more information.
-
----
 
 ## Maintainer
 
 Antonio Labinjan
 [GitHub: AntonioLabinjan](https://github.com/AntonioLabinjan)
-
-Moran napravit website, bez tega nič
 
 Dockerhub deployment: https://hub.docker.com/repository/docker/antoniolabinjan/face-rec-central_server/general
