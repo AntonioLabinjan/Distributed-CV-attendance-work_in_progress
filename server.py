@@ -32,6 +32,12 @@ faiss_index = None
 detection_log = []
 embedding_queue = Queue()
 
+# Threshold testiranje
+thresholds_to_test = thresholds = [
+    0.20, 0.25, 0.30, 0.35, 0.40, 0.42, 0.45, 0.47, 0.50, 0.52, 0.55, 0.57, 0.60, 0.65, 0.70
+]
+threshold_stats = {th: [] for th in thresholds_to_test}
+
 # === Dataset i FAISS ===
 def add_known_face(image_path, name):
     image = cv2.imread(image_path)
@@ -75,7 +81,7 @@ def build_index():
     print("[INFO] FAISS indeks izgrađen.")
 
 # === Klasifikacija ===
-def classify_face(face_embedding, k=7, threshold=0.7):
+def classify_face(face_embedding, k=7, threshold=0.45):
     D, I = faiss_index.search(np.array([face_embedding]).astype('float32'), k)
     votes = {}
     for idx, dist in zip(I[0], D[0]):
@@ -96,13 +102,22 @@ def classify_worker():
         if item is None:
             break  # shutdown
         embedding, node_id = item
-        name, votes = classify_face(embedding)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        best_result = ("Unknown", 0, 0.0)  # name, votes, threshold
+
+        for th in thresholds_to_test:
+            name, score = classify_face(embedding, k=7, threshold=th)
+            threshold_stats[th].append((name, score))
+            if name != "Unknown" and score > best_result[1]:
+                best_result = (name, score, th)
+
         log_entry = {
             "timestamp": timestamp,
-            "name": name,
-            "votes": votes,
-            "node_id": node_id
+            "name": best_result[0],
+            "votes": best_result[1],
+            "node_id": node_id,
+            "used_threshold": best_result[2]
         }
         detection_log.append(log_entry)
 
@@ -131,7 +146,7 @@ def view_log_html():
     <html>
     <head>
         <title>Detekcija lica - Log</title>
-        <meta charset="utf-8">
+        <meta charset=\"utf-8\">
         <style>
             body { font-family: sans-serif; padding: 20px; }
             table { border-collapse: collapse; width: 100%; }
@@ -141,13 +156,14 @@ def view_log_html():
     </head>
     <body>
         <h1>Log Detekcija</h1>
-        <table id="logTable">
+        <table id=\"logTable\">
             <thead>
                 <tr>
                     <th>Timestamp</th>
                     <th>Ime</th>
                     <th>Score</th>
                     <th>Node ID</th>
+                    <th>Threshold</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -172,8 +188,9 @@ def view_log_html():
                     row.innerHTML = `
                         <td>${entry.timestamp}</td>
                         <td>${entry.name}</td>
-                        <td style="background-color: ${scoreColor}; font-weight: bold;">${entry.votes.toFixed(2)}</td>
+                        <td style=\"background-color: ${scoreColor}; font-weight: bold;\">${entry.votes.toFixed(2)}</td>
                         <td>${entry.node_id}</td>
+                        <td>${entry.used_threshold.toFixed(2)}</td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -190,8 +207,53 @@ def view_log_html():
 def home():
     return redirect(url_for("view_log_html"))
 
+from flask import render_template_string
+
+@app.route("/threshold_stats")
+def threshold_stats_view():
+    summary = {
+        str(th): len([res for res in results if res[0] != "Unknown"])
+        for th, results in threshold_stats.items()
+    }
+
+    html_template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Threshold Analiza</title>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: sans-serif; padding: 20px; }
+            table { border-collapse: collapse; width: 50%; margin: auto; }
+            th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+            th { background-color: #f2f2f2; }
+            h1 { text-align: center; }
+        </style>
+    </head>
+    <body>
+        <h1>Rezultati po Thresholdu</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Threshold</th>
+                    <th>Broj pogodaka</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for threshold, count in summary.items() %}
+                <tr>
+                    <td>{{ threshold }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+    return render_template_string(html_template, summary=summary)
+
 if __name__ == "__main__":
-    # Očisti stare podatke u slučaju reloadanja
     known_face_encodings.clear()
     known_face_names.clear()
 
@@ -203,4 +265,3 @@ if __name__ == "__main__":
 
     print("[INIT] Server pokrenut na portu 6010.")
     app.run(host="0.0.0.0", port=6010)
-
