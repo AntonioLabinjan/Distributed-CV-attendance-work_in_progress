@@ -17,28 +17,25 @@ import threading
 
 app = Flask(__name__)
 
-# Inicijalizacija modela
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 model.eval()
 
-# Baza embeddinga
+# Sad dela auto refresh
 known_face_encodings = []
 known_face_names = []
 faiss_index = None
 
-# Log i queue
 detection_log = []
 embedding_queue = Queue()
 
-# Threshold testiranje
+# Live grid search
 thresholds_to_test = thresholds = [
     0.20, 0.25, 0.30, 0.35, 0.40, 0.42, 0.45, 0.47, 0.50, 0.52, 0.55, 0.57, 0.60, 0.65, 0.70
 ]
 threshold_stats = {th: [] for th in thresholds_to_test}
 
-# === Dataset i FAISS ===
 def add_known_face(image_path, name):
     image = cv2.imread(image_path)
     if image is None:
@@ -80,7 +77,6 @@ def build_index():
     faiss_index.add(encodings_np)
     print("[INFO] FAISS indeks izgrađen.")
 
-# === Klasifikacija ===
 def classify_face(face_embedding, k=7, threshold=0.45):
     D, I = faiss_index.search(np.array([face_embedding]).astype('float32'), k)
     votes = {}
@@ -95,7 +91,6 @@ def classify_face(face_embedding, k=7, threshold=0.45):
         return winner, round(votes[winner], 2)
     return "Unknown", 0
 
-# === Worker koji obrađuje queue ===
 def classify_worker():
     while True:
         item = embedding_queue.get()
@@ -124,7 +119,6 @@ def classify_worker():
 worker_thread = threading.Thread(target=classify_worker, daemon=True)
 worker_thread.start()
 
-# === Flask routes ===
 @app.route("/classify", methods=["POST"])
 def classify_api():
     data = request.get_json()
