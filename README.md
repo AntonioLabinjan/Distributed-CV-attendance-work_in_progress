@@ -32,6 +32,7 @@ This project enables face recognition in a distributed setting where low-cost cl
 * **Centralized for efficient indexing and classification**
 * **Privacy-aware**, avoiding raw image transfer
 * **Face segmentation:** Nodes apply MediaPipe Face Mesh segmentation to isolate the face region within the detected bounding box before embedding extraction, improving embedding quality by removing background noise.
+* **Dynamic threshold tuning** via live grid search and auto-reloading of new faces without needing server restarts.
 
 
 ---
@@ -82,6 +83,12 @@ Each node is responsible for:
 * Provides a live **HTML interface** for monitoring detections
 * Automatically reloads all known faces and rebuilds the FAISS index on startup, ensuring the system always uses the latest dataset structure without requiring manual refresh.
 
+### Live Threshold Tuner (Server-side)
+
+* Evaluates multiple threshold values in real-time for each incoming embedding
+* Stores the number of successful classifications per threshold
+* Results accessible via `/threshold_stats` endpoint
+* Helps identify the best-performing threshold dynamically, no manual tuning required
 
 
 ---
@@ -158,6 +165,8 @@ Each node will:
 * **Fairness:** Queue ensures balanced handling across all nodes.
 * **Efficiency:** No image transfer, just vector data.
 * **Responsiveness:** Live updates via `/log/html`.
+ * **Adaptability:** Real-time evaluation of multiple classification thresholds allows system to adapt to changing lighting, background, or model drift.
+
 
 ---
 
@@ -178,7 +187,11 @@ Live classification results can be accessed at:
 http://<server_ip>:6010/log/html
 ```
 
-> Replace with actual IP if not running locally.
+Live threshold grid results (HTML view):
+
+```
+http://<server_ip>:6010/threshold_stats/html
+```
 
 Output includes timestamp, predicted name, score, and node ID. Rows are color-coded based on confidence.
 
@@ -191,6 +204,13 @@ Output includes timestamp, predicted name, score, and node ID. Rows are color-co
 ```
 [Insert live log screenshot here: docs/images/live_log.png]
 ```
+
+Threshold statistics available at:
+
+http://<server_ip>:6010/threshold_stats
+
+
+Provides JSON summary of successful recognitions per threshold (auto-updated live).
 
 ---
 
