@@ -1,4 +1,3 @@
-# node.py
 import cv2
 import numpy as np
 import torch
@@ -9,7 +8,21 @@ from queue import Queue
 from transformers import CLIPProcessor, CLIPModel
 from scipy.spatial.distance import cosine  
 import mediapipe as mp
+import os
+import logging
 
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+# ----- LOGGING SETUP -----
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.FileHandler("node.log"),
+        logging.StreamHandler()
+    ]
+)
 
 # Configuration
 SERVER_URL = "http://localhost:6010/classify"
@@ -40,6 +53,7 @@ def segment_face(image_rgb):
     """Segment face area using MediaPipe Face Mesh and return masked image."""
     results = face_mesh.process(image_rgb)
     if not results.multi_face_landmarks:
+        logging.debug("No face mesh detected.")
         return None
 
     mask = np.zeros(image_rgb.shape[:2], dtype=np.uint8)
@@ -60,6 +74,7 @@ def classify_worker():
     while True:
         embedding = embedding_queue.get()
         if embedding is None:
+            logging.info("Classify worker thread stopping.")
             break  # exit thread
 
         try:
@@ -68,10 +83,11 @@ def classify_worker():
                 data = response.json()
                 with last_message_lock:
                     last_message = data.get("message", last_message)
+                logging.info(f"Server response: {last_message}")
             else:
-                print("Error response from server.")
+                logging.warning(f"Error response from server: status code {response.status_code}")
         except Exception as e:
-            print("Error sending to server:", e)
+            logging.error(f"Error sending to server: {e}")
 
 
 # Start worker thread
@@ -85,6 +101,7 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 while True:
     ret, frame = cap.read()
     if not ret:
+        logging.warning("Failed to grab frame from camera.")
         continue
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -115,6 +132,7 @@ while True:
             if embedding_queue.qsize() < 3:  # prevent overload
                 embedding_queue.put(embedding)
                 last_embedding = embedding
+                logging.info(f"Embedding sent to server. Queue size: {embedding_queue.qsize()}")
 
         # Draw rectangle and message
         with last_message_lock:
@@ -125,8 +143,10 @@ while True:
 
     cv2.imshow("Distributed CV Node", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
+        logging.info("Quitting program.")
         break
 
 cap.release()
 cv2.destroyAllWindows()
 embedding_queue.put(None)  # stop worker thread
+logging.info("Program terminated cleanly.")
