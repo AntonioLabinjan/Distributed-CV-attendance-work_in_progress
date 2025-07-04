@@ -5,7 +5,8 @@ import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 
-from flask import Flask, request, jsonify, redirect, url_for
+import logging
+from flask import Flask, request, jsonify, redirect, url_for, render_template_string
 import torch
 import numpy as np
 import faiss
@@ -15,31 +16,41 @@ from datetime import datetime
 from queue import Queue
 import threading
 
+# Logging konfiguracija
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 app = Flask(__name__)
 
+# Inicijalizacija modela
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 model.eval()
 
-# Sad dela auto refresh
+# Baza embeddinga
 known_face_encodings = []
 known_face_names = []
 faiss_index = None
 
+# Log i queue
 detection_log = []
 embedding_queue = Queue()
 
-# Live grid search
-thresholds_to_test = thresholds = [
+# Threshold testiranje
+thresholds_to_test = [
     0.20, 0.25, 0.30, 0.35, 0.40, 0.42, 0.45, 0.47, 0.50, 0.52, 0.55, 0.57, 0.60, 0.65, 0.70
 ]
 threshold_stats = {th: [] for th in thresholds_to_test}
 
+# === Dataset i FAISS ===
 def add_known_face(image_path, name):
     image = cv2.imread(image_path)
     if image is None:
-        print(f"[UPOZORENJE] Ne mogu učitati: {image_path}")
+        logging.warning(f"Ne mogu učitati: {image_path}")
         return
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     inputs = processor(images=image_rgb, return_tensors="pt").to(device)
@@ -68,15 +79,16 @@ def load_dataset():
                 if os.path.isfile(img_path):
                     add_known_face(img_path, person)
                     count += 1
-    print(f"[INFO] Učitano {count} poznatih lica.")
+    logging.info(f"Učitano {count} poznatih lica.")
 
 def build_index():
     global faiss_index
     encodings_np = np.array(known_face_encodings).astype('float32')
     faiss_index = faiss.IndexFlatL2(encodings_np.shape[1])
     faiss_index.add(encodings_np)
-    print("[INFO] FAISS indeks izgrađen.")
+    logging.info("FAISS indeks izgrađen.")
 
+# === Klasifikacija ===
 def classify_face(face_embedding, k=7, threshold=0.45):
     D, I = faiss_index.search(np.array([face_embedding]).astype('float32'), k)
     votes = {}
@@ -91,6 +103,7 @@ def classify_face(face_embedding, k=7, threshold=0.45):
         return winner, round(votes[winner], 2)
     return "Unknown", 0
 
+# === Worker koji obrađuje queue ===
 def classify_worker():
     while True:
         item = embedding_queue.get()
@@ -119,6 +132,7 @@ def classify_worker():
 worker_thread = threading.Thread(target=classify_worker, daemon=True)
 worker_thread.start()
 
+# === Flask routes ===
 @app.route("/classify", methods=["POST"])
 def classify_api():
     data = request.get_json()
@@ -140,7 +154,7 @@ def view_log_html():
     <html>
     <head>
         <title>Detekcija lica - Log</title>
-        <meta charset=\"utf-8\">
+        <meta charset="utf-8">
         <style>
             body { font-family: sans-serif; padding: 20px; }
             table { border-collapse: collapse; width: 100%; }
@@ -150,7 +164,7 @@ def view_log_html():
     </head>
     <body>
         <h1>Log Detekcija</h1>
-        <table id=\"logTable\">
+        <table id="logTable">
             <thead>
                 <tr>
                     <th>Timestamp</th>
@@ -182,7 +196,7 @@ def view_log_html():
                     row.innerHTML = `
                         <td>${entry.timestamp}</td>
                         <td>${entry.name}</td>
-                        <td style=\"background-color: ${scoreColor}; font-weight: bold;\">${entry.votes.toFixed(2)}</td>
+                        <td style="background-color: ${scoreColor}; font-weight: bold;">${entry.votes.toFixed(2)}</td>
                         <td>${entry.node_id}</td>
                         <td>${entry.used_threshold.toFixed(2)}</td>
                     `;
@@ -200,8 +214,6 @@ def view_log_html():
 @app.route("/")
 def home():
     return redirect(url_for("view_log_html"))
-
-from flask import render_template_string
 
 @app.route("/threshold_stats")
 def threshold_stats_view():
@@ -251,11 +263,11 @@ if __name__ == "__main__":
     known_face_encodings.clear()
     known_face_names.clear()
 
-    print("[INIT] Učitavanje poznatih lica...")
+    logging.info("Učitavanje poznatih lica...")
     load_dataset()
 
-    print("[INIT] Gradnja FAISS indeksa...")
+    logging.info("Gradnja FAISS indeksa...")
     build_index()
 
-    print("[INIT] Server pokrenut na portu 6010.")
+    logging.info("Server pokrenut na portu 6010.")
     app.run(host="0.0.0.0", port=6010)
