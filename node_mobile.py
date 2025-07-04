@@ -1,6 +1,3 @@
-# node.py
-# to run this: python node.py (n times for n nodes (on separate devices of course))
-# first start server in Docker, then nodes
 import cv2
 import numpy as np
 import torch
@@ -9,13 +6,22 @@ import threading
 import time
 from queue import Queue
 from transformers import CLIPProcessor, CLIPModel
-import mediapipe as mp  # <-- added for segmentation
+import mediapipe as mp
+import logging
+
+# --- Logging setup ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.FileHandler("node.log"),
+        logging.StreamHandler()
+    ]
+)
 
 # Konfiguracija
 SERVER_URL = "http://localhost:6010/classify"
-
-#SERVER_URL = "http://172.17.0.4:6010/classify"
-
 NODE_ID = 1
 SEND_INTERVAL = 1.5  # sekundi između slanja
 
@@ -34,13 +40,15 @@ face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refin
 
 # Queue i stanje
 embedding_queue = Queue()
-last_message = "node 1: detected Unknown [--]"
+last_message = f"node {NODE_ID}: detected Unknown [--]"
 last_message_lock = threading.Lock()
+
 
 def segment_face(image_rgb):
     """Segment face area using MediaPipe Face Mesh and return masked image."""
     results = face_mesh.process(image_rgb)
     if not results.multi_face_landmarks:
+        logging.debug("No face mesh detected.")
         return None
 
     mask = np.zeros(image_rgb.shape[:2], dtype=np.uint8)
@@ -55,6 +63,7 @@ def segment_face(image_rgb):
     segmented_face = cv2.bitwise_and(image_rgb, image_rgb, mask=mask)
     return segmented_face
 
+
 def classify_worker():
     global last_message
     last_sent_time = 0
@@ -62,11 +71,13 @@ def classify_worker():
     while True:
         embedding = embedding_queue.get()
         if embedding is None:
+            logging.info("Classify worker thread stopping.")
             break  # izlazak iz threada
 
         now = time.time()
         if now - last_sent_time < SEND_INTERVAL:
-            continue  # prebrzo slanje, preskoči
+            logging.debug("Skipping send: send interval not reached yet.")
+            continue
 
         try:
             response = requests.post(SERVER_URL, json={"embedding": embedding.tolist(), "node_id": NODE_ID}, timeout=2)
@@ -74,24 +85,27 @@ def classify_worker():
                 data = response.json()
                 with last_message_lock:
                     last_message = data.get("message", last_message)
+                logging.info(f"Server response: {last_message}")
             else:
-                print("Greška u odgovoru sa servera.")
+                logging.warning(f"Greska u odgovoru sa servera: status code {response.status_code}")
         except Exception as e:
-            print("Greška pri slanju na server:", e)
+            logging.error(f"Greska pri slanju na server: {e}")
 
         last_sent_time = time.time()
+
 
 # Pokreni worker thread
 threading.Thread(target=classify_worker, daemon=True).start()
 
 # Kamera
-cap = cv2.VideoCapture(2)
+cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 while True:
     ret, frame = cap.read()
     if not ret:
+        logging.warning("Ne mogu dohvatiti frame s kamere.")
         continue
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -120,6 +134,7 @@ while True:
         # Pošalji embedding u queue za obradu
         if embedding_queue.qsize() < 3:  # spriječi pretrpavanje
             embedding_queue.put(embedding)
+            logging.info(f"Embedding poslan u queue. Velicina queuea: {embedding_queue.qsize()}")
 
         # Nacrtaj lice i ispiši poruku
         with last_message_lock:
@@ -130,8 +145,10 @@ while True:
 
     cv2.imshow("Distributed CV Node", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
+        logging.info("Prekid programa (pritisnuta tipka 'q').")
         break
 
 cap.release()
 cv2.destroyAllWindows()
 embedding_queue.put(None)  # zaustavi worker thread
+logging.info("Program zavrsio normalno.")
