@@ -259,6 +259,10 @@ def threshold_stats_view():
     """
     return render_template_string(html_template, summary=summary)
 
+@app.route("/ping", methods=["GET"])
+def ping():
+    return jsonify({"message": "pong"}), 200
+
 if __name__ == "__main__":
     known_face_encodings.clear()
     known_face_names.clear()
