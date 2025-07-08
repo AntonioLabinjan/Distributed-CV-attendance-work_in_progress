@@ -1,6 +1,6 @@
 ## 🛠️ TODO – Upcoming Improvements
 
-- [ ] Zamjena `print()` s `logging` modulom + log fajlovi za greške i info
+- [x] Zamjena `print()` s `logging` modulom + log fajlovi za greške i info
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] Dodati `/ping` i `/heartbeat` rute za health monitoring servera i nodova
 - [ ] Async ili threaded slanje embeddinga za nižu latenciju
