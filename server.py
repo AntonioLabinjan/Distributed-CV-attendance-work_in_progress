@@ -266,28 +266,74 @@ def ping():
 from datetime import timedelta
 
 # da vidimo di se zadnje neki logira
-# npr. ako postavimo nodese na k ulaza u zgradu, vidimo na kojemu se desija zadnji log; npr. vidimo da se neki zadnje logira na glavnemu ulazu pa moremo očekivat da će neki doj od tamo
-@app.route("/active_nodes", methods=["GET"])
-def active_nodes():
-    active_threshold_seconds = 60  # Koliko sekundi u prošlost gledamo
+@app.route("/active_nodes/html", methods=["GET"])
+def active_nodes_html():
+    active_threshold_seconds = 60
     now = datetime.now()
-    
-    recent_nodes = set()
+
+    recent_nodes = {}
     for entry in reversed(detection_log):
         try:
             entry_time = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
         except:
             continue
         if now - entry_time <= timedelta(seconds=active_threshold_seconds):
-            recent_nodes.add(entry["node_id"])
+            node_id = entry["node_id"]
+            if node_id not in recent_nodes:
+                recent_nodes[node_id] = entry_time
         else:
-            break  # Stariji su, izlazimo
+            break
 
-    return jsonify({
-        "active_nodes": list(recent_nodes),
-        "count": len(recent_nodes),
-        "threshold_seconds": active_threshold_seconds
-    })
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Aktivni Nodesi</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            table { border-collapse: collapse; width: 50%; margin: auto; }
+            th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+            th { background-color: #f2f2f2; }
+            .active { background-color: #c8e6c9; }
+        </style>
+    </head>
+    <body>
+        <h1 style="text-align:center;">Aktivni Nodesi (Zadnjih {{threshold}} sekundi)</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Node ID</th>
+                    <th>Zadnje Viđen</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+    for node_id, last_seen in recent_nodes.items():
+        html += f"""
+            <tr class="active">
+                <td>{node_id}</td>
+                <td>{last_seen.strftime("%Y-%m-%d %H:%M:%S")}</td>
+            </tr>
+        """
+
+    if not recent_nodes:
+        html += """
+            <tr>
+                <td colspan="2" style="color: grey;">Nema aktivnih nodova u zadnjih 60 sekundi.</td>
+            </tr>
+        """
+
+    html += f"""
+            </tbody>
+        </table>
+        <p style="text-align:center; margin-top: 20px;">Ukupno aktivnih: <b>{len(recent_nodes)}</b></p>
+    </body>
+    </html>
+    """
+
+    return render_template_string(html, threshold=active_threshold_seconds)
+
 
 
 if __name__ == "__main__":
