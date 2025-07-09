@@ -263,6 +263,33 @@ def threshold_stats_view():
 def ping():
     return jsonify({"message": "pong"}), 200
 
+from datetime import timedelta
+
+# da vidimo di se zadnje neki logira
+# npr. ako postavimo nodese na k ulaza u zgradu, vidimo na kojemu se desija zadnji log; npr. vidimo da se neki zadnje logira na glavnemu ulazu pa moremo očekivat da će neki doj od tamo
+@app.route("/active_nodes", methods=["GET"])
+def active_nodes():
+    active_threshold_seconds = 60  # Koliko sekundi u prošlost gledamo
+    now = datetime.now()
+    
+    recent_nodes = set()
+    for entry in reversed(detection_log):
+        try:
+            entry_time = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
+        except:
+            continue
+        if now - entry_time <= timedelta(seconds=active_threshold_seconds):
+            recent_nodes.add(entry["node_id"])
+        else:
+            break  # Stariji su, izlazimo
+
+    return jsonify({
+        "active_nodes": list(recent_nodes),
+        "count": len(recent_nodes),
+        "threshold_seconds": active_threshold_seconds
+    })
+
+
 if __name__ == "__main__":
     known_face_encodings.clear()
     known_face_names.clear()
