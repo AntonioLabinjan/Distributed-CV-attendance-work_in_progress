@@ -1,3 +1,4 @@
+# ovo mi dela s mojon usb kamericon (BITNO: TRIBA TAKAT KAMERU U DESNI PORT (TAMO DI NI PUNJAČ))
 import cv2
 import numpy as np
 import torch
