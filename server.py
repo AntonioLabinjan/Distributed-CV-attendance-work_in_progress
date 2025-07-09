@@ -103,6 +103,34 @@ def classify_face(face_embedding, k=7, threshold=0.45):
         return winner, round(votes[winner], 2)
     return "Unknown", 0
 
+unknown_attempts = []
+intruder_alerts = []
+
+def check_for_intruder_alert(timestamp_str, node_id, window_seconds=30, threshold_attempts=3):
+    global unknown_attempts, intruder_alerts
+
+    try:
+        ts = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+    except:
+        return
+
+    # Dodaj trenutni pokušaj
+    unknown_attempts.append({"timestamp": ts, "node_id": node_id})
+
+    # Makni stare pokušaje
+    cutoff = datetime.now() - timedelta(seconds=window_seconds)
+    unknown_attempts[:] = [a for a in unknown_attempts if a["timestamp"] >= cutoff]
+
+    if len(unknown_attempts) >= threshold_attempts:
+        alert_entry = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "count": len(unknown_attempts),
+            "nodes": list(set(a["node_id"] for a in unknown_attempts))
+        }
+        intruder_alerts.append(alert_entry)
+        logging.warning(f"[ALERT] Unknown intruder! {alert_entry}")
+        unknown_attempts.clear()  # reset za novi prozor
+
 # === Worker koji obrađuje queue ===
 def classify_worker():
     while True:
@@ -129,8 +157,13 @@ def classify_worker():
         }
         detection_log.append(log_entry)
 
+        # Provjera intrudera
+        if best_result[0] == "Unknown":
+            check_for_intruder_alert(timestamp, node_id)
+
 worker_thread = threading.Thread(target=classify_worker, daemon=True)
 worker_thread.start()
+
 
 # === Flask routes ===
 @app.route("/classify", methods=["POST"])
@@ -335,6 +368,56 @@ def active_nodes_html():
     return render_template_string(html, threshold=active_threshold_seconds)
 
 
+@app.route("/intruder_alerts", methods=["GET"])
+def get_intruder_alerts():
+    return jsonify(intruder_alerts)
+
+@app.route("/intruder_alerts/html", methods=["GET"])
+def intruder_alerts_html():
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="refresh" content="5">
+        <title>Unknown Intruder Alerts</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            table { border-collapse: collapse; width: 70%; margin: auto; }
+            th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+            th { background-color: #f2f2f2; }
+            .alert { background-color: #ffcdd2; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <h1 style="text-align:center;">Intruder Alert Log</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Broj pokušaja</th>
+                    <th>Nodeovi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alert in alerts %}
+                <tr class="alert">
+                    <td>{{ alert.timestamp }}</td>
+                    <td>{{ alert.count }}</td>
+                    <td>{{ alert.nodes | join(", ") }}</td>
+                </tr>
+                {% endfor %}
+                {% if alerts|length == 0 %}
+                <tr>
+                    <td colspan="3" style="color: grey;">Nema intruder alertova zabilježeno.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+    return render_template_string(html, alerts=intruder_alerts)
 
 if __name__ == "__main__":
     known_face_encodings.clear()
