@@ -1,6 +1,5 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
-# Will update tommorow
 
 This repository contains a scalable system for distributed face recognition using multiple client nodes and a central server. Each node extracts face embeddings using a CLIP model and sends them to the server, which handles classification and logging using a FAISS index of known faces.
 
@@ -226,6 +225,31 @@ Provides JSON summary of successful recognitions per threshold (auto-updated liv
 
 ---
 
+
+DOCS DRAFT:
+- samo ću si izlistat najvažnije rute i funkcije
+- pa ću ben složit kako treba
+Server
+- add_known_face
+- load_dataset
+- build_index
+- classify_face
+- check_for_intruder_alert
+- classify_worker
+- /classify
+- /log
+- /log/html
+- /
+- /threshold_stats
+- /ping
+- /active_nodes/html
+- /intruder_alerts
+- /reload_dataset
+
+Node
+- segment_face
+- classify_worker
+- 
 
 ## Maintainer
 
