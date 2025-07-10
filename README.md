@@ -249,7 +249,6 @@ Server
 Node
 - segment_face
 - classify_worker
-- 
 
 ## Maintainer
 
