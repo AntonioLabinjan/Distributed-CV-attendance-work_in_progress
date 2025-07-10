@@ -1,6 +1,9 @@
 # server.py
 # to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
 # to run this: docker run -p 6010:6010 face-rec-central_server_6010
+# server.py
+# to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
+# to run this: docker run -p 6010:6010 face-rec-central_server_6010
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
@@ -60,10 +63,14 @@ def add_known_face(image_path, name):
     normalized = embedding / np.linalg.norm(embedding)
     known_face_encodings.append(normalized)
     known_face_names.append(name)
+import os
+import logging
 
 def load_dataset():
     count = 0
+    known_faces = set()
     dataset_path = "dataset"
+    
     for person in os.listdir(dataset_path):
         person_path = os.path.join(dataset_path, person)
         if not os.path.isdir(person_path):
@@ -78,8 +85,12 @@ def load_dataset():
                 img_path = os.path.join(subdir_path, img_file)
                 if os.path.isfile(img_path):
                     add_known_face(img_path, person)
+                    known_faces.add(person)
                     count += 1
+    
     logging.info(f"Učitano {count} poznatih lica.")
+    logging.info(f"Poznata lica: {', '.join(sorted(known_faces))}")
+
 
 def build_index():
     global faiss_index
@@ -419,6 +430,23 @@ def intruder_alerts_html():
     """
     return render_template_string(html, alerts=intruder_alerts)
 
+
+@app.route("/reload_dataset", methods=["GET"])
+def reload_dataset():
+    global faiss_index, known_face_encodings, known_face_names
+
+    known_face_encodings.clear()
+    known_face_names.clear()
+    detection_log.clear()
+
+    logging.info("Ponovno učitavanje dataset-a...")
+    load_dataset()
+
+    logging.info("Ponovno gradnja FAISS indeksa...")
+    build_index()
+
+    return "Dataset i indeks su uspješno osvježeni!"
+
 if __name__ == "__main__":
     known_face_encodings.clear()
     known_face_names.clear()
@@ -430,4 +458,4 @@ if __name__ == "__main__":
     build_index()
 
     logging.info("Server pokrenut na portu 6010.")
-    app.run(host="0.0.0.0", port=6010)
+    app.run(host="0.0.0.0", port=6010, debug=True)
