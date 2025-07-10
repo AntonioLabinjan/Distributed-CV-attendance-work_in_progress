@@ -37,7 +37,14 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 
 # MediaPipe Face Mesh for segmentation
 mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refine_landmarks=True)
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=False,  # tracking preko frameova
+    max_num_faces=1,
+    refine_landmarks=True,    # ili False za dodatnu brzinu
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
+
 
 # Queue i stanje
 embedding_queue = Queue()
@@ -46,23 +53,35 @@ last_message_lock = threading.Lock()
 
 
 def segment_face(image_rgb):
-    """Segment face area using MediaPipe Face Mesh and return masked image."""
-    results = face_mesh.process(image_rgb)
+    """Brža segmentacija lica koristeći MediaPipe Face Mesh s resizeom i trackingom."""
+
+    # Resize za bolju brzinu (manja rezolucija)
+    small_rgb = cv2.resize(image_rgb, (320, 240))
+
+    # Obrada na manjoj slici
+    results = face_mesh.process(small_rgb)
     if not results.multi_face_landmarks:
         logging.debug("No face mesh detected.")
         return None
 
-    mask = np.zeros(image_rgb.shape[:2], dtype=np.uint8)
-    h, w = mask.shape
+    # Skaliranje nazad na originalnu veličinu
+    h_orig, w_orig = image_rgb.shape[:2]
+    h_small, w_small = small_rgb.shape[:2]
+    scale_x = w_orig / w_small
+    scale_y = h_orig / h_small
 
+    # Kreiranje maske
+    mask = np.zeros((h_orig, w_orig), dtype=np.uint8)
     landmarks = results.multi_face_landmarks[0].landmark
-    points = [(int(lm.x * w), int(lm.y * h)) for lm in landmarks]
+    points = [(int(lm.x * w_small * scale_x), int(lm.y * h_small * scale_y)) for lm in landmarks]
 
+    # Konveksni poligon i segmentacija
     hull = cv2.convexHull(np.array(points))
     cv2.fillConvexPoly(mask, hull, 255)
-
     segmented_face = cv2.bitwise_and(image_rgb, image_rgb, mask=mask)
+
     return segmented_face
+
 
 
 def classify_worker():
@@ -99,7 +118,7 @@ def classify_worker():
 threading.Thread(target=classify_worker, daemon=True).start()
 
 # Kamera
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
