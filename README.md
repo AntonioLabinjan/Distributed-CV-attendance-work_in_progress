@@ -66,7 +66,7 @@ Each node is responsible for:
 * Detecting faces using Haar cascades
 * Segmenting detected faces with MediaPipe Face Mesh to mask out background pixels inside the face region
 * Generating normalized CLIP embeddings
-* Avoiding redundant transmissions by comparing embeddings with the previous one
+* Avoiding redundant transmissions by comparing embeddings with the previous one and sending only above certain threshold
 * Sending new embeddings to the server for classification
 
 ### Embedding Queue (Server-side)
