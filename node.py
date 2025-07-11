@@ -53,7 +53,9 @@ face_mesh = mp_face_mesh.FaceMesh(
 embedding_queue = Queue()
 last_message = f"node {NODE_ID}: detected Unknown [--]"
 last_message_lock = threading.Lock()
+
 last_embedding = None  # for comparison with previous embedding
+last_embedding_lock = threading.Lock()
 
 
 def segment_face(image_rgb):
@@ -85,7 +87,6 @@ def segment_face(image_rgb):
     segmented_face = cv2.bitwise_and(image_rgb, image_rgb, mask=mask)
 
     return segmented_face
-
 
 
 def classify_worker():
@@ -146,11 +147,16 @@ while True:
         embedding = outputs.cpu().numpy().flatten()
         embedding /= np.linalg.norm(embedding)
 
-        # Send only if embedding is different enough from last sent embedding
-        if last_embedding is None or cosine(embedding, last_embedding) > DIFF_THRESHOLD:
+        # Event-based slanje: šalji samo ako je embedding > DIFF_THRESHOLD različit od prethodnog
+        send_embedding = False
+        with last_embedding_lock:
+            if last_embedding is None or cosine(embedding, last_embedding) > DIFF_THRESHOLD:
+                send_embedding = True
+                last_embedding = embedding
+
+        if send_embedding:
             if embedding_queue.qsize() < 3:  # prevent overload
                 embedding_queue.put(embedding)
-                last_embedding = embedding
                 logging.info(f"Embedding sent to server. Queue size: {embedding_queue.qsize()}")
 
         # Draw rectangle and message
