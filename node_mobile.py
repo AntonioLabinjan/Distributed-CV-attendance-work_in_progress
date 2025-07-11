@@ -7,10 +7,14 @@ import threading
 import time
 from queue import Queue
 from transformers import CLIPProcessor, CLIPModel
+from scipy.spatial.distance import cosine  
 import mediapipe as mp
+import os
 import logging
 
-# --- Logging setup ---
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+# ----- LOGGING SETUP -----
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(levelname)s - %(message)s',
@@ -21,18 +25,18 @@ logging.basicConfig(
     ]
 )
 
-# Konfiguracija
+# Configuration
 SERVER_URL = "http://localhost:6010/classify"
 NODE_ID = 1
-SEND_INTERVAL = 1.5  # sekundi između slanja
+DIFF_THRESHOLD = 0.2  # threshold for sending embedding (lower = more sensitive)
 
-# Model i uređaj
+# Model and device
 device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 model.eval()
 
-# Haar Cascade
+# Haar Cascade for face detection
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # MediaPipe Face Mesh for segmentation
@@ -46,10 +50,13 @@ face_mesh = mp_face_mesh.FaceMesh(
 )
 
 
-# Queue i stanje
+# Queue and state
 embedding_queue = Queue()
 last_message = f"node {NODE_ID}: detected Unknown [--]"
 last_message_lock = threading.Lock()
+
+last_embedding = None  # for comparison with previous embedding
+last_embedding_lock = threading.Lock()
 
 
 def segment_face(image_rgb):
@@ -83,21 +90,13 @@ def segment_face(image_rgb):
     return segmented_face
 
 
-
 def classify_worker():
     global last_message
-    last_sent_time = 0
-
     while True:
         embedding = embedding_queue.get()
         if embedding is None:
             logging.info("Classify worker thread stopping.")
-            break  # izlazak iz threada
-
-        now = time.time()
-        if now - last_sent_time < SEND_INTERVAL:
-            logging.debug("Skipping send: send interval not reached yet.")
-            continue
+            break  # exit thread
 
         try:
             response = requests.post(SERVER_URL, json={"embedding": embedding.tolist(), "node_id": NODE_ID}, timeout=2)
@@ -107,17 +106,15 @@ def classify_worker():
                     last_message = data.get("message", last_message)
                 logging.info(f"Server response: {last_message}")
             else:
-                logging.warning(f"Greska u odgovoru sa servera: status code {response.status_code}")
+                logging.warning(f"Error response from server: status code {response.status_code}")
         except Exception as e:
-            logging.error(f"Greska pri slanju na server: {e}")
-
-        last_sent_time = time.time()
+            logging.error(f"Error sending to server: {e}")
 
 
-# Pokreni worker thread
+# Start worker thread
 threading.Thread(target=classify_worker, daemon=True).start()
 
-# Kamera
+# Camera setup
 cap = cv2.VideoCapture(1)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -125,7 +122,7 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 while True:
     ret, frame = cap.read()
     if not ret:
-        logging.warning("Ne mogu dohvatiti frame s kamere.")
+        logging.warning("Failed to grab frame from camera.")
         continue
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -136,13 +133,13 @@ while True:
         if face.size == 0:
             continue
 
-        # Convert to RGB for MediaPipe and CLIP
+        # Convert to RGB
         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
 
         # Segment the face to remove background inside face ROI
         segmented_face = segment_face(face_rgb)
         if segmented_face is None:
-            continue  # no face mesh detected, skip
+            continue  # no face mesh detected
 
         # Extract embedding from segmented face
         inputs = processor(images=segmented_face, return_tensors="pt").to(device)
@@ -151,12 +148,19 @@ while True:
         embedding = outputs.cpu().numpy().flatten()
         embedding /= np.linalg.norm(embedding)
 
-        # Pošalji embedding u queue za obradu
-        if embedding_queue.qsize() < 3:  # spriječi pretrpavanje
-            embedding_queue.put(embedding)
-            logging.info(f"Embedding poslan u queue. Velicina queuea: {embedding_queue.qsize()}")
+        # Event-based slanje: šalji samo ako je embedding > DIFF_THRESHOLD različit od prethodnog
+        send_embedding = False
+        with last_embedding_lock:
+            if last_embedding is None or cosine(embedding, last_embedding) > DIFF_THRESHOLD:
+                send_embedding = True
+                last_embedding = embedding
 
-        # Nacrtaj lice i ispiši poruku
+        if send_embedding:
+            if embedding_queue.qsize() < 3:  # prevent overload
+                embedding_queue.put(embedding)
+                logging.info(f"Embedding sent to server. Queue size: {embedding_queue.qsize()}")
+
+        # Draw rectangle and message
         with last_message_lock:
             display_message = last_message
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -165,10 +169,10 @@ while True:
 
     cv2.imshow("Distributed CV Node", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
-        logging.info("Prekid programa (pritisnuta tipka 'q').")
+        logging.info("Quitting program.")
         break
 
 cap.release()
 cv2.destroyAllWindows()
-embedding_queue.put(None)  # zaustavi worker thread
-logging.info("Program zavrsio normalno.")
+embedding_queue.put(None)  # stop worker thread
+logging.info("Program terminated cleanly.")
