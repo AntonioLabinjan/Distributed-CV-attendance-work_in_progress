@@ -10,6 +10,6 @@
 - [x] ~~Live dashboard `/nodes` za pregled statusa svih nodova~~
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije
-- [x] Automatski refresh dataseta
+- [x] ~~Automatski refresh dataseta~~
 - [ ] Better event based features
-- [ ] Find alternative for regular Python queue
+- [ ] Find alternative for regular Python queue×(rabbitmq probbably) 
