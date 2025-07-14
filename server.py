@@ -532,6 +532,36 @@ def reload_dataset():
 
     return "Dataset i indeks su uspješno osvježeni!"
 
+# === FUNKCIJA: should_classify(node_id, new_embedding) ===
+# Ulaz: node_id (npr. 0, 1, 2...), new_embedding (numpy array)
+# Izlaz: True ako treba klasificirati, False ako ne treba
+
+# Globalni kontejneri koji pamte zadnji embedding i timestamp po nodeu
+last_embedding_per_node = {}     # npr. {0: embedding_array, 1: embedding_array}
+last_timestamp_per_node = {}     # npr. {0: datetime, 1: datetime}
+
+def should_classify(node_id, new_embedding):
+    # === 1. Ako je to PRVI embedding s ovog nodea ===
+    # - Još nismo spremili ništa za taj node → klasificiraj
+    # - Spremi current embedding i trenutni timestamp
+    # - return True
+
+    # === 2. Izračunaj cosine udaljenost između new_embedding i last_embedding za taj node ===
+    # - Ako je udaljenost > THRESH_DIST (npr. 0.2) → radi se o novoj osobi → klasificiraj
+    # - Ažuriraj embedding i timestamp za taj node
+    # - return True
+
+    # === 3. Ako udaljenost NIJE velika (znači vjerojatno ista osoba) ===
+    # - Provjeri koliko je vremena prošlo od zadnje klasifikacije
+    # - Ako je prošlo više od TIME_THRESHOLD (npr. 30 sekundi) → klasificiraj opet (refresh)
+    # - Ažuriraj timestamp
+    # - return True
+
+    # === 4. Inače:
+    # - Isti embedding, nedavno klasificiran → ignoriraj
+    # - return False
+    pass
+
 if __name__ == "__main__":
     known_face_encodings.clear()
     known_face_names.clear()
