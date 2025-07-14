@@ -331,7 +331,7 @@ def home():
 def get_queue_contents():
     try:
         # Uzmi max 20 elemenata iz queuea (list length može biti velik)
-        items = redis_client.lrange("embedding_queue", 0, 19)
+        items = redis_client.lrange("embedding_queue", 0, 20)
         # Decode bytes u string i parse JSON
         decoded = []
         for item in items:
