@@ -11,5 +11,5 @@
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije
 - [x] ~~Automatski refresh dataseta~~
-- [ ] Better event based features
-- [ ] Find alternative for regular Python queue×(redis probbably) 
+- [ ] Better event based features; napravit da ne spamma konstantno isti embedding nego nekako više graceful
+- [x] ~~Find alternative for regular Python queue×(redis probbably)~~
