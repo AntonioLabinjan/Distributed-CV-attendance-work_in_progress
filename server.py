@@ -1,9 +1,6 @@
 # server.py
 # to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
 # to run this: docker run -p 6010:6010 face-rec-central_server_6010
-# server.py
-# to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
-# to run this: docker run -p 6010:6010 face-rec-central_server_6010
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
@@ -16,8 +13,10 @@ import faiss
 from transformers import CLIPProcessor, CLIPModel
 import cv2
 from datetime import datetime
-from queue import Queue
+import redis
 import threading
+from datetime import datetime, timedelta
+
 
 # Logging konfiguracija
 logging.basicConfig(
@@ -41,7 +40,9 @@ faiss_index = None
 
 # Log i queue
 detection_log = []
-embedding_queue = Queue()
+# Redis setup
+redis_client = redis.Redis(host='localhost', port=6379, db=0)  # prilagodi port ako treba
+
 
 # Threshold testiranje
 thresholds_to_test = [
@@ -49,6 +50,24 @@ thresholds_to_test = [
 ]
 threshold_stats = {th: [] for th in thresholds_to_test}
 
+
+@app.route('/redis-test', methods=['GET'])
+def redis_test():
+    try:
+        # Postavi neki ključ i vrijednost u Redis
+        redis_client.set('test_key', 'Redis radi! 🚀')
+
+        # Uzmi vrijednost nazad
+        value = redis_client.get('test_key')
+        if value:
+            value = value.decode('utf-8')
+        else:
+            value = 'Nema vrijednosti'
+
+        return jsonify({"status": "success", "value": value})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
 # === Dataset i FAISS ===
 def add_known_face(image_path, name):
     image = cv2.imread(image_path)
@@ -143,37 +162,79 @@ def check_for_intruder_alert(timestamp_str, node_id, window_seconds=30, threshol
         unknown_attempts.clear()  # reset za novi prozor
 
 # === Worker koji obrađuje queue ===
+import redis
+import json
+import numpy as np
+
+MAX_RETRIES = 3
+
 def classify_worker():
     while True:
-        item = embedding_queue.get()
-        if item is None:
-            break  # shutdown
-        embedding, node_id = item
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            result = redis_client.brpop("embedding_queue", timeout=2)
+            if result is None:
+                continue  # nema embeddinga trenutno
 
-        best_result = ("Unknown", 0, 0.0)  # name, votes, threshold
+            _, message = result
+            data = json.loads(message)
+            embedding = np.array(data["embedding"])
+            node_id = data["node_id"]
+            retries = data.get("retries", 0)
 
-        for th in thresholds_to_test:
-            name, score = classify_face(embedding, k=7, threshold=th)
-            threshold_stats[th].append((name, score))
-            if name != "Unknown" and score > best_result[1]:
-                best_result = (name, score, th)
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            best_result = ("Unknown", 0, 0.0)  # name, votes, threshold
 
-        log_entry = {
-            "timestamp": timestamp,
-            "name": best_result[0],
-            "votes": best_result[1],
-            "node_id": node_id,
-            "used_threshold": best_result[2]
-        }
-        detection_log.append(log_entry)
+            for th in thresholds_to_test:
+                name, score = classify_face(embedding, k=7, threshold=th)
+                threshold_stats[th].append((name, score))
+                if name != "Unknown" and score > best_result[1]:
+                    best_result = (name, score, th)
 
-        # Provjera intrudera
-        if best_result[0] == "Unknown":
-            check_for_intruder_alert(timestamp, node_id)
+            log_entry = {
+                "timestamp": timestamp,
+                "name": best_result[0],
+                "votes": best_result[1],
+                "node_id": node_id,
+                "used_threshold": best_result[2]
+            }
+            detection_log.append(log_entry)
 
-worker_thread = threading.Thread(target=classify_worker, daemon=True)
-worker_thread.start()
+            if best_result[0] == "Unknown":
+                check_for_intruder_alert(timestamp, node_id)
+
+        except (json.JSONDecodeError, KeyError) as e:
+            try:
+                redis_client.lpush("embedding_dead", message)
+                logging.warning(f" Nevažeći JSON ili KeyError: {e} | Poruka: {message}")
+            except Exception as inner_e:
+                logging.error(f"Greška kod spremanja nevažeće poruke u dead-letter: {inner_e}")
+
+        except Exception as e:
+            try:
+                retries = data.get("retries", 0) if 'data' in locals() else 0
+            except Exception:
+                retries = 0
+
+            if retries < MAX_RETRIES:
+                try:
+                    if 'data' in locals():
+                        data["retries"] = retries + 1
+                        redis_client.lpush("embedding_queue", json.dumps(data))
+                        logging.warning(f" Retry #{retries + 1} | Node {data.get('node_id')} | Greška: {e}")
+                    else:
+                        logging.warning(f" Retry failed - no data variable | Greška: {e}")
+                except Exception as e2:
+                    logging.error(f" Retry failed. Greška: {e2}")
+            else:
+                try:
+                    if 'data' in locals():
+                        redis_client.lpush("embedding_dead", json.dumps(data))
+                        logging.error(f" Previše pokušaja, šaljem u dead-letter | Poruka: {data} | Greška: {e}")
+                    else:
+                        logging.error(f" Dead-letter fallback failed - no data variable | Greška: {e}")
+                except Exception as e2:
+                    logging.error(f" Dead-letter fallback failed. Greška: {e2}")
+
 
 
 # === Flask routes ===
@@ -184,7 +245,13 @@ def classify_api():
     embedding /= np.linalg.norm(embedding)
     node_id = data.get("node_id", 0)
 
-    embedding_queue.put((embedding, node_id))
+    message = json.dumps({
+        "embedding": embedding.tolist(),
+        "node_id": node_id,
+        "retries": 0
+    })
+    redis_client.lpush("embedding_queue", message)
+
     return jsonify({"message": f"node {node_id}: embedding received"})
 
 @app.route("/log", methods=["GET"])
@@ -259,6 +326,24 @@ def view_log_html():
 def home():
     return redirect(url_for("view_log_html"))
 
+
+@app.route("/queue_contents", methods=["GET"])
+def get_queue_contents():
+    try:
+        # Uzmi max 20 elemenata iz queuea (list length može biti velik)
+        items = redis_client.lrange("embedding_queue", 0, 19)
+        # Decode bytes u string i parse JSON
+        decoded = []
+        for item in items:
+            try:
+                decoded.append(item.decode('utf-8'))
+            except Exception as e:
+                decoded.append(f"<decode error: {e}>")
+
+        return jsonify({"queue_length": redis_client.llen("embedding_queue"), "items": decoded})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 @app.route("/threshold_stats")
 def threshold_stats_view():
     summary = {
@@ -458,4 +543,7 @@ if __name__ == "__main__":
     build_index()
 
     logging.info("Server pokrenut na portu 6010.")
+    worker_thread = threading.Thread(target=classify_worker, daemon=True)
+    worker_thread.start()
+    logging.info("Worker thread dela")
     app.run(host="0.0.0.0", port=6010, debug=True)
