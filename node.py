@@ -9,6 +9,7 @@ from scipy.spatial.distance import cosine
 import mediapipe as mp
 import os
 import threading
+from datetime import datetime, timedelta
 
 # === Env setup ===
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -35,7 +36,12 @@ except redis.ConnectionError as e:
 
 # === Config ===
 NODE_ID = 0
-DIFF_THRESHOLD = 0
+THRESHOLD_DISTANCE = 0.2
+THRESHOLD_TIME = timedelta(seconds=30)
+
+# === State for classification ===
+last_embedding_per_node = {}
+last_timestamp_per_node = {}
 
 # === CLIP model ===
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -57,11 +63,9 @@ face_mesh = mp_face_mesh.FaceMesh(
     min_tracking_confidence=0.5
 )
 
-# === State ===
+# === UI state ===
 last_message = f"node {NODE_ID}: detection successful"
 last_message_lock = threading.Lock()
-last_embedding = None
-last_embedding_lock = threading.Lock()
 
 # === Segmentacija lica ===
 def segment_face(image_rgb):
@@ -81,6 +85,30 @@ def segment_face(image_rgb):
     cv2.fillConvexPoly(mask, hull, 255)
     segmented_face = cv2.bitwise_and(image_rgb, image_rgb, mask=mask)
     return segmented_face
+
+# === Should Classify funkcija ===
+def should_classify(node_id, new_embedding):
+    current_time = datetime.now()
+
+    if node_id not in last_embedding_per_node:
+        last_embedding_per_node[node_id] = new_embedding
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    prev_embedding = last_embedding_per_node[node_id]
+    dist = cosine(new_embedding, prev_embedding)
+
+    if dist > THRESHOLD_DISTANCE:
+        last_embedding_per_node[node_id] = new_embedding
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    prev_time = last_timestamp_per_node[node_id]
+    if current_time - prev_time > THRESHOLD_TIME:
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    return False
 
 # === Kamera setup ===
 cap = cv2.VideoCapture(0)
@@ -126,21 +154,7 @@ while True:
         logging.debug(f"Embedding shape: {embedding.shape}, first 5: {embedding[:5]}")
         logging.debug(f"Embedding norm: {np.linalg.norm(embedding)}")
 
-        send_embedding = False
-        with last_embedding_lock:
-            if last_embedding is None:
-                logging.debug("Prvi embedding - saljem.")
-                send_embedding = True
-            elif cosine(embedding, last_embedding) > DIFF_THRESHOLD:
-                logging.debug("Embedding dovoljno razlicit - saljem.")
-                send_embedding = True
-            else:
-                logging.debug("Embedding preslican - ne saljem.")
-
-            if send_embedding:
-                last_embedding = embedding
-
-        if send_embedding:
+        if should_classify(NODE_ID, embedding):
             data = {
                 "embedding": embedding.tolist(),
                 "node_id": NODE_ID,
