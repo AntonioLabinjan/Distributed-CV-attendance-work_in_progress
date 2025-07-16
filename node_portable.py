@@ -6,20 +6,18 @@ import logging
 import redis
 import json
 from transformers import CLIPProcessor, CLIPModel
-from scipy.spatial.distance import cosine  
+from scipy.spatial.distance import cosine
 import mediapipe as mp
 import os
 import threading
+from datetime import datetime, timedelta
 
-# Env setup
+# === Env setup ===
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
-# Redis setup
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
-
-# Logging
+# === Logging setup ===
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='[%(asctime)s] %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
@@ -28,20 +26,35 @@ logging.basicConfig(
     ]
 )
 
-# Config
-NODE_ID = 0
-DIFF_THRESHOLD = 0
+# === Redis setup ===
+try:
+    redis_client = redis.Redis(host='localhost', port=6379, db=0)
+    redis_client.ping()
+    logging.info("Redis povezan uspjesno.")
+except redis.ConnectionError as e:
+    logging.error(f"Ne mogu se spojiti na Redis: {e}")
+    exit(1)
 
-# Model
+# === Config ===
+NODE_ID = 2
+THRESHOLD_DISTANCE = 0.2
+THRESHOLD_TIME = timedelta(seconds=30)
+
+# === State for classification ===
+last_embedding_per_node = {}
+last_timestamp_per_node = {}
+
+# === CLIP model ===
 device = "cuda" if torch.cuda.is_available() else "cpu"
+logging.info(f"Koristi se device: {device}")
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 model.eval()
 
-# Face detection
+# === Face detection ===
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Face mesh
+# === Face mesh ===
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(
     static_image_mode=False,
@@ -51,16 +64,16 @@ face_mesh = mp_face_mesh.FaceMesh(
     min_tracking_confidence=0.5
 )
 
-# State
+# === UI state ===
 last_message = f"node {NODE_ID}: detection successful"
 last_message_lock = threading.Lock()
-last_embedding = None
-last_embedding_lock = threading.Lock()
 
+# === Segmentacija lica ===
 def segment_face(image_rgb):
     small_rgb = cv2.resize(image_rgb, (320, 240))
     results = face_mesh.process(small_rgb)
     if not results.multi_face_landmarks:
+        logging.debug("Nema face landmarks detected.")
         return None
     h_orig, w_orig = image_rgb.shape[:2]
     h_small, w_small = small_rgb.shape[:2]
@@ -74,28 +87,63 @@ def segment_face(image_rgb):
     segmented_face = cv2.bitwise_and(image_rgb, image_rgb, mask=mask)
     return segmented_face
 
-# Camera setup
+# === Should Classify funkcija ===
+def should_classify(node_id, new_embedding):
+    current_time = datetime.now()
+
+    if node_id not in last_embedding_per_node:
+        last_embedding_per_node[node_id] = new_embedding
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    prev_embedding = last_embedding_per_node[node_id]
+    dist = cosine(new_embedding, prev_embedding)
+
+    if dist > THRESHOLD_DISTANCE:
+        last_embedding_per_node[node_id] = new_embedding
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    prev_time = last_timestamp_per_node[node_id]
+    if current_time - prev_time > THRESHOLD_TIME:
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    return False
+
+# === Kamera setup ===
 cap = cv2.VideoCapture(2)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
+if not cap.isOpened():
+    logging.error("Kamera se nije mogla otvoriti.")
+    exit(1)
+
+logging.info("Node pokrenut. Spreman za obradu...")
+
 while True:
     ret, frame = cap.read()
     if not ret:
-        logging.warning("Failed to grab frame from camera.")
+        logging.warning("Nisam uspio dohvatiti frame.")
         continue
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, 1.1, 4)
 
+    if len(faces) == 0:
+        logging.debug("Nema lica u frameu.")
+
     for (x, y, w, h) in faces:
         face = frame[y:y + h, x:x + w]
         if face.size == 0:
+            logging.debug("Izdvojeno lice ima size 0.")
             continue
 
         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
         segmented_face = segment_face(face_rgb)
         if segmented_face is None:
+            logging.debug("Segmentacija lica nije uspjela.")
             continue
 
         inputs = processor(images=segmented_face, return_tensors="pt").to(device)
@@ -104,22 +152,25 @@ while True:
         embedding = outputs.cpu().numpy().flatten()
         embedding /= np.linalg.norm(embedding)
 
-        send_embedding = False
-        with last_embedding_lock:
-            if last_embedding is None or cosine(embedding, last_embedding) > DIFF_THRESHOLD:
-                send_embedding = True
-                last_embedding = embedding
+        logging.debug(f"Embedding shape: {embedding.shape}, first 5: {embedding[:5]}")
+        logging.debug(f"Embedding norm: {np.linalg.norm(embedding)}")
 
-        if send_embedding:
+        if should_classify(NODE_ID, embedding):
             data = {
                 "embedding": embedding.tolist(),
                 "node_id": NODE_ID,
                 "retries": 0
             }
-            redis_client.lpush("embedding_queue", json.dumps(data))
-            logging.info(" Embedding poslan u Redis queue.")
+            try:
+                json_data = json.dumps(data)
+                redis_client.lpush("embedding_queue", json_data)
+                queue_size = redis_client.llen("embedding_queue")
+                logging.info(f"Embedding poslan u Redis queue. Queue size: {queue_size}")
+                logging.debug(f"JSON podatak: {json_data[:200]}...")
+            except Exception as e:
+                logging.error(f"Greska pri slanju u Redis: {e}")
 
-        # Draw
+        # === UI prikaz ===
         with last_message_lock:
             display_message = last_message
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
