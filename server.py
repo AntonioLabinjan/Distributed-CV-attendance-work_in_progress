@@ -237,6 +237,8 @@ def classify_worker():
 
 
 
+
+
 # === Flask routes ===
 @app.route("/classify", methods=["POST"])
 def classify_api():
@@ -245,14 +247,17 @@ def classify_api():
     embedding /= np.linalg.norm(embedding)
     node_id = data.get("node_id", 0)
 
-    message = json.dumps({
-        "embedding": embedding.tolist(),
-        "node_id": node_id,
-        "retries": 0
-    })
-    redis_client.lpush("embedding_queue", message)
-
-    return jsonify({"message": f"node {node_id}: embedding received"})
+    # === Trigger klasifikacije samo ako treba ===
+    if should_classify(node_id, embedding):
+        message = json.dumps({
+            "embedding": embedding.tolist(),
+            "node_id": node_id,
+            "retries": 0
+        })
+        redis_client.lpush("embedding_queue", message)
+        return jsonify({"message": f"Node {node_id}: embedding primljen i proslijeđen na klasifikaciju."})
+    else:
+        return jsonify({"message": f"Node {node_id}: preskočena klasifikacija (embedding sličan i nedavni)."})
 
 @app.route("/log", methods=["GET"])
 def view_log():
@@ -536,11 +541,8 @@ def reload_dataset():
 # Ulaz: node_id (npr. 0, 1, 2...), new_embedding (numpy array)
 # Izlaz: True ako treba klasificirati, False ako ne treba
 
-# Globalni kontejneri koji pamte zadnji embedding i timestamp po nodeu
-last_embedding_per_node = {}     # npr. {0: embedding_array, 1: embedding_array}
-last_timestamp_per_node = {}     # npr. {0: datetime, 1: datetime}
 
-def should_classify(node_id, new_embedding):
+#def should_classify(node_id, new_embedding):
     # === 1. Ako je to PRVI embedding s ovog nodea ===
     # - Još nismo spremili ništa za taj node → klasificiraj
     # - Spremi current embedding i trenutni timestamp
@@ -560,7 +562,48 @@ def should_classify(node_id, new_embedding):
     # === 4. Inače:
     # - Isti embedding, nedavno klasificiran → ignoriraj
     # - return False
-    pass
+ #   pass
+
+
+
+
+from datetime import datetime, timedelta
+from scipy.spatial.distance import cosine
+
+# === Globalni trackeri po nodeu ===
+last_embedding_per_node = {}      # npr. {0: np.array([...])}
+last_timestamp_per_node = {}      # npr. {0: datetime object}
+
+# === Parametri koji se lako fino štimaju ===
+THRESHOLD_DISTANCE = 0.2          # Ako je embedding značajno različit → klasificiraj
+THRESHOLD_TIME = timedelta(seconds=30)  # Ako je prošlo više vremena → klasificiraj opet
+
+def should_classify(node_id, new_embedding):
+    current_time = datetime.now()
+
+    # === 1. Prvi put za ovaj node? ===
+    if node_id not in last_embedding_per_node:
+        last_embedding_per_node[node_id] = new_embedding
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    # === 2. Udaljenost između novog i zadnjeg embeddinga ===
+    prev_embedding = last_embedding_per_node[node_id]
+    dist = cosine(new_embedding, prev_embedding)
+
+    if dist > THRESHOLD_DISTANCE:
+        last_embedding_per_node[node_id] = new_embedding
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    # === 3. Ako je sličan embedding, ali prošlo je puno vremena ===
+    prev_time = last_timestamp_per_node[node_id]
+    if current_time - prev_time > THRESHOLD_TIME:
+        last_timestamp_per_node[node_id] = current_time
+        return True
+
+    # === 4. Inače: preskoči klasifikaciju ===
+    return False
 
 if __name__ == "__main__":
     known_face_encodings.clear()
