@@ -15,4 +15,4 @@
 - [x] ~~Better event based features; napravit da ne spamma konstantno isti embedding nego nekako više graceful->implement should_classify fn~~
 - [x] ~~Find alternative for regular Python queue×(redis probbably)~~
 - [ ] Ne zabit da se redis mora vrtit u dockeru
-- [ ] Malo poradit na modularnosti i orkestraciji (npr. globalni imports file, centralni runner za nodese di samo prosljedin idjeve koje želin upalit i sl.) 
+- [x] ~~Malo poradit na modularnosti i orkestraciji (npr. globalni imports file, centralni runner za nodese di samo prosljedin idjeve koje želin upalit i sl.)~~
