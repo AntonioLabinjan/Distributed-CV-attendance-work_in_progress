@@ -16,6 +16,10 @@ from datetime import datetime
 import redis
 import threading
 from datetime import datetime, timedelta
+import os
+import logging
+from datetime import timedelta
+from scipy.spatial.distance import cosine
 
 
 # Logging konfiguracija
@@ -82,8 +86,7 @@ def add_known_face(image_path, name):
     normalized = embedding / np.linalg.norm(embedding)
     known_face_encodings.append(normalized)
     known_face_names.append(name)
-import os
-import logging
+
 
 def load_dataset():
     count = 0
@@ -267,64 +270,101 @@ def view_log():
 def view_log_html():
     return """
     <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Detekcija lica - Log</title>
-        <meta charset="utf-8">
-        <style>
-            body { font-family: sans-serif; padding: 20px; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-        </style>
-    </head>
-    <body>
-        <h1>Log Detekcija</h1>
-        <table id="logTable">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Ime</th>
-                    <th>Score</th>
-                    <th>Node ID</th>
-                    <th>Threshold</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+<html>
+<head>
+    <title>Detekcija lica - Log</title>
+    <meta charset="utf-8">
+    <style>
+        /* Dark‑mode paleta */
+        :root {
+            --bg-main: #121212;
+            --bg-card: #1e1e1e;
+            --bg-header: #1f1f1f;
+            --text-main: #e0e0e0;
+            --border: #333;
+        }
 
-        <script>
-            function getScoreColor(score) {
-                if (score >= 6) return '#b3e5fc';
-                if (score >= 4) return '#c8e6c9';
-                if (score >= 2) return '#fff9c4';
-                return '#ffcdd2';
-            }
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: var(--bg-main);
+            color: var(--text-main);
+        }
 
-            async function fetchLog() {
-                const res = await fetch("/log");
-                const data = await res.json();
-                const tbody = document.querySelector("#logTable tbody");
-                tbody.innerHTML = "";
-                data.forEach(entry => {
-                    const row = document.createElement("tr");
-                    const scoreColor = getScoreColor(entry.votes);
-                    row.innerHTML = `
-                        <td>${entry.timestamp}</td>
-                        <td>${entry.name}</td>
-                        <td style="background-color: ${scoreColor}; font-weight: bold;">${entry.votes.toFixed(2)}</td>
-                        <td>${entry.node_id}</td>
-                        <td>${entry.used_threshold.toFixed(2)}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            }
+        h1 { margin-bottom: 1rem; }
 
-            setInterval(fetchLog, 1000);
-            fetchLog();
-        </script>
-    </body>
-    </html>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: var(--bg-card);
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background: var(--bg-header);
+            color: #fff;
+        }
+
+        /* Malo zaobljenja za moderniji look (opcionalno) */
+        table, th:first-child, td:first-child { border-left-width: 2px; }
+        table, th:last-child,  td:last-child  { border-right-width: 2px; }
+        th:first-child, td:first-child { border-left-width: 2px; }
+        th:last-child,  td:last-child  { border-right-width: 2px; }
+    </style>
+</head>
+<body>
+    <h1>Log Detekcija</h1>
+    <table id="logTable">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Ime</th>
+                <th>Score</th>
+                <th>Node ID</th>
+                <th>Threshold</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        function getScoreColor(score) {
+            if (score >= 6) return '#b3e5fc';
+            if (score >= 4) return '#c8e6c9';
+            if (score >= 2) return '#fff9c4';
+            return '#ffcdd2';
+        }
+
+        async function fetchLog() {
+            const res = await fetch("/log");
+            const data = await res.json();
+            const tbody = document.querySelector("#logTable tbody");
+            tbody.innerHTML = "";
+            data.forEach(entry => {
+                const row = document.createElement("tr");
+                const scoreColor = getScoreColor(entry.votes);
+                row.innerHTML = `
+                    <td>${entry.timestamp}</td>
+                    <td>${entry.name}</td>
+                    <td style="background-color: ${scoreColor}; font-weight: bold;">${entry.votes.toFixed(2)}</td>
+                    <td>${entry.node_id}</td>
+                    <td>${entry.used_threshold.toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        setInterval(fetchLog, 1000);
+        fetchLog();
+    </script>
+</body>
+</html>
+
     """
 
 @app.route("/")
@@ -358,38 +398,72 @@ def threshold_stats_view():
 
     html_template = """
     <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Threshold Analiza</title>
-        <meta charset="utf-8">
-        <style>
-            body { font-family: sans-serif; padding: 20px; }
-            table { border-collapse: collapse; width: 50%; margin: auto; }
-            th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
-            th { background-color: #f2f2f2; }
-            h1 { text-align: center; }
-        </style>
-    </head>
-    <body>
-        <h1>Rezultati po Thresholdu</h1>
-        <table>
-            <thead>
-                <tr>
-                    <th>Threshold</th>
-                    <th>Broj pogodaka</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for threshold, count in summary.items() %}
-                <tr>
-                    <td>{{ threshold }}</td>
-                    <td>{{ count }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </body>
-    </html>
+<html>
+<head>
+    <title>Threshold Analiza</title>
+    <meta charset="utf-8">
+    <style>
+        :root {
+            --bg-main: #121212;
+            --bg-card: #1e1e1e;
+            --bg-header: #1f1f1f;
+            --text-main: #e0e0e0;
+            --border: #333;
+        }
+
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: var(--bg-main);
+            color: var(--text-main);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 50%;
+            margin: auto;
+            background: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--bg-header);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Rezultati po Thresholdu</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Threshold</th>
+                <th>Broj pogodaka</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for threshold, count in summary.items() %}
+            <tr>
+                <td>{{ threshold }}</td>
+                <td>{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+
     """
     return render_template_string(html_template, summary=summary)
 
@@ -397,7 +471,6 @@ def threshold_stats_view():
 def ping():
     return jsonify({"message": "pong"}), 200
 
-from datetime import timedelta
 
 # da vidimo di se zadnje neki logira
 @app.route("/active_nodes/html", methods=["GET"])
@@ -424,13 +497,51 @@ def active_nodes_html():
     <head>
         <meta charset="utf-8">
         <title>Aktivni Nodesi</title>
-        <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            table { border-collapse: collapse; width: 50%; margin: auto; }
-            th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
-            th { background-color: #f2f2f2; }
-            .active { background-color: #c8e6c9; }
-        </style>
+          <style>
+        :root {
+            --bg-main: #121212;
+            --bg-card: #1e1e1e;
+            --bg-header: #1f1f1f;
+            --text-main: #e0e0e0;
+            --border: #333;
+            --active-color: #388e3c33; /* light green background for active row */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 50%;
+            margin: auto;
+            background-color: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--bg-header);
+            color: #fff;
+        }
+
+        .active {
+            background-color: var(--active-color);
+        }
+    </style>
     </head>
     <body>
         <h1 style="text-align:center;">Aktivni Nodesi (Zadnjih {{threshold}} sekundi)</h1>
@@ -477,46 +588,93 @@ def get_intruder_alerts():
 def intruder_alerts_html():
     html = """
     <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="refresh" content="5">
-        <title>Unknown Intruder Alerts</title>
-        <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            table { border-collapse: collapse; width: 70%; margin: auto; }
-            th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
-            th { background-color: #f2f2f2; }
-            .alert { background-color: #ffcdd2; font-weight: bold; }
-        </style>
-    </head>
-    <body>
-        <h1 style="text-align:center;">Intruder Alert Log</h1>
-        <table>
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Broj pokušaja</th>
-                    <th>Nodeovi</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for alert in alerts %}
-                <tr class="alert">
-                    <td>{{ alert.timestamp }}</td>
-                    <td>{{ alert.count }}</td>
-                    <td>{{ alert.nodes | join(", ") }}</td>
-                </tr>
-                {% endfor %}
-                {% if alerts|length == 0 %}
-                <tr>
-                    <td colspan="3" style="color: grey;">Nema intruder alertova zabilježeno.</td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </body>
-    </html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="5">
+    <title>Unknown Intruder Alerts</title>
+    <style>
+        :root {
+            --bg-main: #121212;
+            --bg-card: #1e1e1e;
+            --bg-header: #1f1f1f;
+            --text-main: #e0e0e0;
+            --border: #333;
+            --alert-color: #b00020; /* tamna crvena za alert */
+            --alert-bg: #ff8a8033;  /* suptilna tamnija crvena s transparencijom */
+            --no-alert-color: #aaa;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 70%;
+            margin: auto;
+            background-color: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--bg-header);
+            color: #fff;
+        }
+
+        .alert {
+            background-color: var(--alert-bg);
+            color: var(--alert-color);
+            font-weight: bold;
+        }
+
+        td[colspan="3"] {
+            color: var(--no-alert-color);
+        }
+    </style>
+</head>
+<body>
+    <h1>Intruder Alert Log</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Broj pokušaja</th>
+                <th>Nodeovi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alert in alerts %}
+            <tr class="alert">
+                <td>{{ alert.timestamp }}</td>
+                <td>{{ alert.count }}</td>
+                <td>{{ alert.nodes | join(", ") }}</td>
+            </tr>
+            {% endfor %}
+            {% if alerts|length == 0 %}
+            <tr>
+                <td colspan="3">Nema intruder alertova zabilježeno.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>
+
     """
     return render_template_string(html, alerts=intruder_alerts)
 
