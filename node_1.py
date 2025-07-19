@@ -111,6 +111,20 @@ def should_classify(node_id, new_embedding):
 
     return False
 
+TOO_DARK_THRESHOLD = 20  # average brightness (0-255)
+TOO_DARK_CONSEC_FRAMES = 10
+too_dark_counter = 0
+
+def is_too_dark(gray_frame):
+    global too_dark_counter
+    avg_brightness = np.mean(gray_frame)
+    if avg_brightness < TOO_DARK_THRESHOLD:
+        too_dark_counter += 1
+    else:
+        too_dark_counter = 0
+    return too_dark_counter >= TOO_DARK_CONSEC_FRAMES
+
+
 # === Kamera setup ===
 cap = cv2.VideoCapture(1)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -129,6 +143,9 @@ while True:
         continue
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    if is_too_dark(gray):
+        logging.warning("It's too dark — kamera ne vidi gotovo ništa.")
+        cv2.putText(frame, "Too damn dark!", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
     faces = face_cascade.detectMultiScale(gray, 1.1, 4)
 
     if len(faces) == 0:
