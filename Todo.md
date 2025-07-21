@@ -4,7 +4,7 @@
 - [ ] Snapshot spremanje slike prilikom slanja embeddinga (debug/dataset)
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
 - [ ] Failover mehanizam: čuvanje embeddinga offline ako server nedostupan
-- [ ] Fallback mehanika.za nodes...neki lifesaver ako node crkne
+- [ ] Fallback mehanika.za nodes...neki lifesaver ako node crkne - > probbably neki health check unutar nodea
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije
 - [x] ~~Zamjena `print()` s `logging` modulom + log fajlovi za greške i info~~
