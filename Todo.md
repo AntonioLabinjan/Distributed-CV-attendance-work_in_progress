@@ -5,6 +5,7 @@
 - [ ] Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije
+- [ ] Centralizirani FPS/Latency monitor za sve nodese (sve metrike na 1 mistu) 
 - [x] ~~Fallback mehanika.za nodes...neki lifesaver ako node crkne - > probbably neki health check unutar nodea~~
 - [x] ~~Zamjena `print()` s `logging` modulom + log fajlovi za greške i info~~
 - [x] ~~Dodati `/ping` i `/heartbeat` rute za health monitoring servera i nodova~~
