@@ -10,6 +10,8 @@ import mediapipe as mp
 import os
 import threading
 from datetime import datetime, timedelta
+import time
+
 
 # === Env setup ===
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -35,7 +37,7 @@ except redis.ConnectionError as e:
     exit(1)
 
 # === Config ===
-NODE_ID = 0
+NODE_ID = 1
 THRESHOLD_DISTANCE = 0.2
 THRESHOLD_TIME = timedelta(seconds=30)
 
@@ -113,6 +115,10 @@ def should_classify(node_id, new_embedding):
 TOO_DARK_THRESHOLD = 20  # average brightness (0-255)
 TOO_DARK_CONSEC_FRAMES = 10
 too_dark_counter = 0
+frame_count = 0
+start_time = time.time()
+latency_measurements = []
+
 
 def is_too_dark(gray_frame):
     global too_dark_counter
@@ -126,7 +132,7 @@ def is_too_dark(gray_frame):
 
 # === Kamera setup ===
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 # === Health check kamere ===
 health_check_ret, health_check_frame = cap.read()
@@ -152,6 +158,7 @@ if not cap.isOpened():
 logging.info("Node pokrenut. Spreman za obradu...")
 
 while True:
+    frame_start = time.time()
     ret, frame = cap.read()
     if not ret:
         logging.warning("Nisam uspio dohvatiti frame.")
@@ -209,10 +216,28 @@ while True:
         cv2.putText(frame, display_message, (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
+    # === FPS & latencija mjerenje ===
+    frame_end = time.time()
+    latency = frame_end - frame_start
+    latency_measurements.append(latency)
+    frame_count += 1
+
+    if frame_count % 30 == 0:
+        elapsed_time = frame_end - start_time
+        fps = frame_count / elapsed_time
+        avg_latency = sum(latency_measurements) / len(latency_measurements)
+        logging.info(f"FPS: {fps:.2f}, Prosječna latencija po frameu: {avg_latency * 1000:.2f} ms")
+
+        frame_count = 0
+        start_time = time.time()
+        latency_measurements = []
+
+    # === Prikaz framea ===
     cv2.imshow("Distributed CV Node", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
         logging.info("Prekid programa.")
         break
+
 
 cap.release()
 cv2.destroyAllWindows()
