@@ -44,7 +44,7 @@ faiss_index = None
 
 # Log i queue
 detection_log = []
-# Redis setup
+# Redis setup => make sure docker is running
 redis_client = redis.Redis(host='localhost', port=6379, db=0)  # prilagodi port ako treba
 
 
@@ -469,7 +469,8 @@ def threshold_stats_view():
 
 @app.route("/ping", methods=["GET"])
 def ping():
-    return jsonify({"message": "pong"}), 200
+    return jsonify({"message": "Server is up and running"}), 200
+
 
 
 # da vidimo di se zadnje neki logira
