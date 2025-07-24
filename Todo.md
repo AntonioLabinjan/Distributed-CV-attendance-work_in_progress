@@ -5,8 +5,8 @@
 - [ ] Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije
-- [x] ~~Implement FPS/Latency tracking~~
-- [ ] Centralizirat FPS/Latency monitor za sve nodese (sve metrike na 1 mistu) 
+- [ ] Centralizirat FPS/Latency monitor za sve nodese (sve metrike na 1 mistu)
+- [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
 - [x] ~~Fallback mehanika.za nodes...neki lifesaver ako node crkne - > probbably neki health check unutar nodea~~
 - [x] ~~Zamjena `print()` s `logging` modulom + log fajlovi za greške i info~~
 - [x] ~~Dodati `/ping` i `/heartbeat` rute za health monitoring servera i nodova~~
@@ -19,4 +19,4 @@
 - [x] ~~Malo poradit na modularnosti i orkestraciji (npr. globalni imports file, centralni runner za nodese di samo prosljedin idjeve koje želin upalit i sl.)~~
 - [x] ~~Implementirat upozorenje ako je env premračan~~
 - [x] ~~Snapshot spremanje slike prilikom slanja embeddinga (debug/dataset) => NI SLUČAJNO OVO IMPLEMENTIRAT; SLIKE DETEKCIJE SE NE POHRANJUJU!!!!!~~
-- [] 🧠 **Dinamičko skaliranje nodeova** – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu — **paralelno, distribuirano i štedljivo**.
+- [x] ~~Implement FPS/Latency tracking~~
