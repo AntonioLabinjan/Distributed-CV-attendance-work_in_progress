@@ -5,8 +5,8 @@
 - [ ] Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije
-- [ ] Centralizirat FPS/Latency monitor za sve nodese (sve metrike na 1 mistu)
 - [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
+- [x] ~~Centralizirat FPS/Latency monitor za sve nodese (sve metrike na 1 mistu) => better; posebni log file za svaki node...nema smisla da se loga u 1 file, pa da triban scrollat ko štupido...praktičnije je ovako~~
 - [x] ~~Add latency logging on all nodes~~
 - [x] ~~Fallback mehanika.za nodes...neki lifesaver ako node crkne - > probbably neki health check unutar nodea~~
 - [x] ~~Zamjena `print()` s `logging` modulom + log fajlovi za greške i info~~
