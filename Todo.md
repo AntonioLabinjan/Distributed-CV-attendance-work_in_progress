@@ -6,18 +6,18 @@
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije
 - [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
-- [x] ~~Centralizirat FPS/Latency monitor za sve nodese (sve metrike na 1 mistu) => better; posebni log file za svaki node...nema smisla da se loga u 1 file, pa da triban scrollat ko štupido...praktičnije je ovako~~
-- [x] ~~Add latency logging on all nodes~~
-- [x] ~~Fallback mehanika.za nodes...neki lifesaver ako node crkne - > probbably neki health check unutar nodea~~
-- [x] ~~Zamjena `print()` s `logging` modulom + log fajlovi za greške i info~~
-- [x] ~~Dodati `/ping` i `/heartbeat` rute za health monitoring servera i nodova~~
-- [x] ~~Async ili threaded slanje embeddinga za nižu latenciju (BAD IDEA; EVENT BASED SENDING AKO SU EMBEDDINZI DOVOLJNO RAZLIČITI)~~
-- [x] ~~Live dashboard `/nodes` za pregled statusa svih nodova~~
-- [x] ~~Automatski refresh dataseta~~
-- [x] ~~Better event based features; napravit da ne spamma konstantno isti embedding nego nekako više graceful->implement should_classify fn~~
-- [x] ~~Find alternative for regular Python queue×(redis probbably)~~
-- [x] ~~Ne zabit da se redis mora vrtit u dockeru~~
-- [x] ~~Malo poradit na modularnosti i orkestraciji (npr. globalni imports file, centralni runner za nodese di samo prosljedin idjeve koje želin upalit i sl.)~~
-- [x] ~~Implementirat upozorenje ako je env premračan~~
-- [x] ~~Snapshot spremanje slike prilikom slanja embeddinga (debug/dataset) => NI SLUČAJNO OVO IMPLEMENTIRAT; SLIKE DETEKCIJE SE NE POHRANJUJU!!!!!~~
-- [x] ~~Implement FPS/Latency tracking~~
+- ✅ ~~Centralizirat FPS/Latency monitor za sve nodese (sve metrike na 1 mistu) => better; posebni log file za svaki node...nema smisla da se loga u 1 file, pa da triban scrollat ko štupido...praktičnije je ovako~~
+- ✅ ~~Add latency logging on all nodes~~
+- ✅ ~~Fallback mehanika.za nodes...neki lifesaver ako node crkne - > probbably neki health check unutar nodea~~
+- ✅ ~~Zamjena `print()` s `logging` modulom + log fajlovi za greške i info~~
+- ✅ ~~Dodati `/ping` i `/heartbeat` rute za health monitoring servera i nodova~~
+- ✅ ~~Async ili threaded slanje embeddinga za nižu latenciju (BAD IDEA; EVENT BASED SENDING AKO SU EMBEDDINZI DOVOLJNO RAZLIČITI)~~
+- ✅ ~~Live dashboard `/nodes` za pregled statusa svih nodova~~
+- ✅ ~~Automatski refresh dataseta~~
+- ✅ ~~Better event based features; napravit da ne spamma konstantno isti embedding nego nekako više graceful->implement should_classify fn~~
+- ✅ ~~Find alternative for regular Python queue×(redis probbably)~~
+- ✅ ~~Ne zabit da se redis mora vrtit u dockeru~~
+- ✅ ~~Malo poradit na modularnosti i orkestraciji (npr. globalni imports file, centralni runner za nodese di samo prosljedin idjeve koje želin upalit i sl.)~~
+- ✅ ~~Implementirat upozorenje ako je env premračan~~
+- ✅ ~~Snapshot spremanje slike prilikom slanja embeddinga (debug/dataset) => NI SLUČAJNO OVO IMPLEMENTIRAT; SLIKE DETEKCIJE SE NE POHRANJUJU!!!!!~~
+- ✅ ~~Implement FPS/Latency tracking~~
