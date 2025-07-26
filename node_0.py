@@ -135,17 +135,28 @@ def is_too_dark(gray_frame):
 cap = cv2.VideoCapture(0)
 
 # === Health check kamere ===
-health_check_ret, health_check_frame = cap.read()
-if not health_check_ret or health_check_frame is None or health_check_frame.size == 0:
-    logging.critical("HEALTH CHECK: Kamera nije uspješno dohvatila inicijalni frame. Node se gasi.")
+import time
+
+MAX_RETRIES = 50
+RETRY_DELAY = 1  # sekundi
+
+for attempt in range(MAX_RETRIES):
+    health_check_ret, health_check_frame = cap.read()
+    if health_check_ret and health_check_frame is not None and health_check_frame.size != 0:
+        avg_brightness = np.mean(cv2.cvtColor(health_check_frame, cv2.COLOR_BGR2GRAY))
+        if avg_brightness < TOO_DARK_THRESHOLD:
+            logging.warning(f"HEALTH CHECK: Inicijalni frame je pretaman (avg_brightness={avg_brightness:.2f}).")
+        else:
+            logging.info("HEALTH CHECK: Kamera uspješno prošla inicijalni test.")
+        break
+    else:
+        logging.info(f"HEALTH CHECK: Čekanje na aktivaciju kamere... (pokušaj {attempt + 1}/{MAX_RETRIES})")
+        time.sleep(RETRY_DELAY)
+else:
+    logging.critical("HEALTH CHECK: Kamera nije dohvatila validan frame ni nakon više pokušaja. Node se gasi.")
     cap.release()
     exit(1)
-else:
-    avg_brightness = np.mean(cv2.cvtColor(health_check_frame, cv2.COLOR_BGR2GRAY))
-    if avg_brightness < TOO_DARK_THRESHOLD:
-        logging.warning(f"HEALTH CHECK: Inicijalni frame je pretaman (avg_brightness={avg_brightness:.2f}).")
-    else:
-        logging.info("HEALTH CHECK: Kamera uspješno prošla inicijalni test.")
+
 
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
