@@ -226,7 +226,15 @@ while True:
         elapsed_time = frame_end - start_time
         fps = frame_count / elapsed_time
         avg_latency = sum(latency_measurements) / len(latency_measurements)
-        logging.info(f"FPS: {fps:.2f}, Prosječna latencija po frameu: {avg_latency * 1000:.2f} ms")
+        log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - FPS: {fps:.2f}, Latencija: {avg_latency * 1000:.2f} ms"
+        logging.info(log_line)
+        
+        try:
+            with open("latency_log_node_0.txt", "a") as latency_file:
+                latency_file.write(log_line + "\n")
+        except Exception as e:
+            logging.error(f"Greska pri pisanju u latency_log.txt: {e}")
+
 
         frame_count = 0
         start_time = time.time()
