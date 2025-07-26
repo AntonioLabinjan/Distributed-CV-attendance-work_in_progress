@@ -1,3 +1,4 @@
+# teoretski, ovo je daljinski za palit nodese hehe
 import tkinter as tk
 import subprocess
 import os
