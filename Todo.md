@@ -1,5 +1,9 @@
 ## 🛠️ TODO – Upcoming Improvements
+- [ ] Auto Node Discovery (peer-to-peer pre-boot)
 
+> Kad pokrećeš node, neka najprije provjeri postoji li konfiguracijski server (ili neki centralni announcement endpoint) s listom ostalih nodeova i servera, i sam si povuče sve potrebne parametre.
+➡️ Idealno za future scaling: plug and play node deployment. Samo pokreneš node.py na novom uređaju, i bum – dio je mreže.
+> idealno će bit spremit server url u env pa ga vadit iz enva...pridonosi skalabilnosti jer onda lakše dodamo novi node bez da imamo pojma di se server vrti
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
 - [ ] Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan
