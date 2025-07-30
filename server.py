@@ -44,7 +44,7 @@ faiss_index = None
 
 # Log i queue
 detection_log = []
-# Redis setup => make sure docker is running
+# Redis setup
 redis_client = redis.Redis(host='localhost', port=6379, db=0)  # prilagodi port ako treba
 
 
@@ -472,7 +472,6 @@ def ping():
     return jsonify({"message": "Server is up and running"}), 200
 
 
-
 # da vidimo di se zadnje neki logira
 @app.route("/active_nodes/html", methods=["GET"])
 def active_nodes_html():
@@ -774,8 +773,10 @@ if __name__ == "__main__":
     logging.info("Gradnja FAISS indeksa...")
     build_index()
 
-    logging.info("Server pokrenut na portu 6010.")
+    
+    port = int(os.getenv("PORT", 6010))
+    logging.info(f"Server pokrenut na portu {port}")
     worker_thread = threading.Thread(target=classify_worker, daemon=True)
     worker_thread.start()
     logging.info("Worker thread dela")
-    app.run(host="0.0.0.0", port=6010, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True)
