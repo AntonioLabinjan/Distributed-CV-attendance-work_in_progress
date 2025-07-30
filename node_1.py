@@ -11,7 +11,10 @@ import os
 import threading
 from datetime import datetime, timedelta
 import time
+from dotenv import load_dotenv
 
+
+load_dotenv()  # učitaj iz .env datoteke
 
 # === Env setup ===
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -38,8 +41,8 @@ except redis.ConnectionError as e:
 
 # === Config ===
 NODE_ID = 1
-THRESHOLD_DISTANCE = 0.2
-THRESHOLD_TIME = timedelta(seconds=30)
+THRESHOLD_DISTANCE = float(os.getenv("THRESHOLD_DISTANCE", 0.2))
+THRESHOLD_TIME = timedelta(seconds=int(os.getenv("THRESHOLD_TIME_SECONDS", 30)))
 
 # === State for classification ===
 last_embedding_per_node = {}
