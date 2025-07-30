@@ -3,7 +3,7 @@
 
 > Kad pokrećeš node, neka najprije provjeri postoji li konfiguracijski server (ili neki centralni announcement endpoint) s listom ostalih nodeova i servera, i sam si povuče sve potrebne parametre.
 ➡️ Idealno za future scaling: plug and play node deployment. Samo pokreneš node.py na novom uređaju, i bum – dio je mreže.
-> idealno će bit spremit server url u env pa ga vadit iz enva...pridonosi skalabilnosti jer onda lakše dodamo novi node bez da imamo pojma di se server vrti
+> ~~idealno će bit spremit server url u env pa ga vadit iz enva...pridonosi skalabilnosti jer onda lakše dodamo novi node bez da imamo pojma di se server vrti~~ (ZAJEB...ne spreman server url nikamo jer je redis middleware između nodesa i servera) - > u env ćemo stavit: threshold distance i threshold time iz nodesa i app.run paramse iz server.py
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
 - [ ] Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan
