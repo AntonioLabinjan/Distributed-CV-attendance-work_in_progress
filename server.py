@@ -1,6 +1,9 @@
 # server.py
 # to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
 # to run this: docker run -p 6010:6010 face-rec-central_server_6010
+# server.py
+# to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
+# to run this: docker run -p 6010:6010 face-rec-central_server_6010
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
@@ -59,14 +62,14 @@ threshold_stats = {th: [] for th in thresholds_to_test}
 def redis_test():
     try:
         # Postavi neki ključ i vrijednost u Redis
-        redis_client.set('test_key', 'Redis radi! 🚀')
+        redis_client.set('test_key', 'Redis works!')
 
         # Uzmi vrijednost nazad
         value = redis_client.get('test_key')
         if value:
             value = value.decode('utf-8')
         else:
-            value = 'Nema vrijednosti'
+            value = 'No value returned'
 
         return jsonify({"status": "success", "value": value})
     except Exception as e:
@@ -76,7 +79,7 @@ def redis_test():
 def add_known_face(image_path, name):
     image = cv2.imread(image_path)
     if image is None:
-        logging.warning(f"Ne mogu učitati: {image_path}")
+        logging.warning(f"Unable to load: {image_path}")
         return
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     inputs = processor(images=image_rgb, return_tensors="pt").to(device)
@@ -110,8 +113,8 @@ def load_dataset():
                     known_faces.add(person)
                     count += 1
     
-    logging.info(f"Učitano {count} poznatih lica.")
-    logging.info(f"Poznata lica: {', '.join(sorted(known_faces))}")
+    logging.info(f"Loaded {count} known faces.")
+    logging.info(f"Known face class-names: {', '.join(sorted(known_faces))}")
 
 
 def build_index():
@@ -119,7 +122,7 @@ def build_index():
     encodings_np = np.array(known_face_encodings).astype('float32')
     faiss_index = faiss.IndexFlatL2(encodings_np.shape[1])
     faiss_index.add(encodings_np)
-    logging.info("FAISS indeks izgrađen.")
+    logging.info("FAISS index built successfully.")
 
 # === Klasifikacija ===
 def classify_face(face_embedding, k=7, threshold=0.45):
@@ -208,9 +211,9 @@ def classify_worker():
         except (json.JSONDecodeError, KeyError) as e:
             try:
                 redis_client.lpush("embedding_dead", message)
-                logging.warning(f" Nevažeći JSON ili KeyError: {e} | Poruka: {message}")
+                logging.warning(f" Invalid JSON or KeyError: {e} | Message: {message}")
             except Exception as inner_e:
-                logging.error(f"Greška kod spremanja nevažeće poruke u dead-letter: {inner_e}")
+                logging.error(f"Error while storing invalid message in dead-letter: {inner_e}")
 
         except Exception as e:
             try:
@@ -223,20 +226,20 @@ def classify_worker():
                     if 'data' in locals():
                         data["retries"] = retries + 1
                         redis_client.lpush("embedding_queue", json.dumps(data))
-                        logging.warning(f" Retry #{retries + 1} | Node {data.get('node_id')} | Greška: {e}")
+                        logging.warning(f" Retry #{retries + 1} | Node {data.get('node_id')} | Error: {e}")
                     else:
-                        logging.warning(f" Retry failed - no data variable | Greška: {e}")
+                        logging.warning(f" Retry failed - no data variable | Error: {e}")
                 except Exception as e2:
-                    logging.error(f" Retry failed. Greška: {e2}")
+                    logging.error(f" Retry failed. Error: {e2}")
             else:
                 try:
                     if 'data' in locals():
                         redis_client.lpush("embedding_dead", json.dumps(data))
-                        logging.error(f" Previše pokušaja, šaljem u dead-letter | Poruka: {data} | Greška: {e}")
+                        logging.error(f" Too many retries, sending into dead-letter | Message: {data} | Error: {e}")
                     else:
-                        logging.error(f" Dead-letter fallback failed - no data variable | Greška: {e}")
+                        logging.error(f" Dead-letter fallback failed - no data variable | Error: {e}")
                 except Exception as e2:
-                    logging.error(f" Dead-letter fallback failed. Greška: {e2}")
+                    logging.error(f" Dead-letter fallback failed. Error: {e2}")
 
 
 
@@ -258,9 +261,9 @@ def classify_api():
             "retries": 0
         })
         redis_client.lpush("embedding_queue", message)
-        return jsonify({"message": f"Node {node_id}: embedding primljen i proslijeđen na klasifikaciju."})
+        return jsonify({"message": f"Node {node_id}: embedding recieved and sent to classification."})
     else:
-        return jsonify({"message": f"Node {node_id}: preskočena klasifikacija (embedding sličan i nedavni)."})
+        return jsonify({"message": f"Node {node_id}: classification skipped (embedding too similar to last one)."})
 
 @app.route("/log", methods=["GET"])
 def view_log():
@@ -272,7 +275,7 @@ def view_log_html():
     <!DOCTYPE html>
 <html>
 <head>
-    <title>Detekcija lica - Log</title>
+    <title>Face detection - Log</title>
     <meta charset="utf-8">
     <style>
         /* Dark‑mode paleta */
@@ -318,12 +321,12 @@ def view_log_html():
     </style>
 </head>
 <body>
-    <h1>Log Detekcija</h1>
+    <h1>Detection log</h1>
     <table id="logTable">
         <thead>
             <tr>
                 <th>Timestamp</th>
-                <th>Ime</th>
+                <th>Name</th>
                 <th>Score</th>
                 <th>Node ID</th>
                 <th>Threshold</th>
@@ -444,12 +447,12 @@ def threshold_stats_view():
     </style>
 </head>
 <body>
-    <h1>Rezultati po Thresholdu</h1>
+    <h1>Results by threshold</h1>
     <table>
         <thead>
             <tr>
                 <th>Threshold</th>
-                <th>Broj pogodaka</th>
+                <th>Num of correct classifications</th>
             </tr>
         </thead>
         <tbody>
@@ -544,12 +547,12 @@ def active_nodes_html():
     </style>
     </head>
     <body>
-        <h1 style="text-align:center;">Aktivni Nodesi (Zadnjih {{threshold}} sekundi)</h1>
+        <h1 style="text-align:center;">Active Nodes (Last {{threshold}} seconds)</h1>
         <table>
             <thead>
                 <tr>
                     <th>Node ID</th>
-                    <th>Zadnje Viđen</th>
+                    <th>Last seen</th>
                 </tr>
             </thead>
             <tbody>
@@ -565,14 +568,14 @@ def active_nodes_html():
     if not recent_nodes:
         html += """
             <tr>
-                <td colspan="2" style="color: grey;">Nema aktivnih nodova u zadnjih 60 sekundi.</td>
+                <td colspan="2" style="color: grey;">No active nodes in last 60 seconds.</td>
             </tr>
         """
 
     html += f"""
             </tbody>
         </table>
-        <p style="text-align:center; margin-top: 20px;">Ukupno aktivnih: <b>{len(recent_nodes)}</b></p>
+        <p style="text-align:center; margin-top: 20px;">Total num of active nodes: <b>{len(recent_nodes)}</b></p>
     </body>
     </html>
     """
@@ -653,8 +656,8 @@ def intruder_alerts_html():
         <thead>
             <tr>
                 <th>Timestamp</th>
-                <th>Broj pokušaja</th>
-                <th>Nodeovi</th>
+                <th>Num of tries</th>
+                <th>Nodes</th>
             </tr>
         </thead>
         <tbody>
@@ -667,7 +670,7 @@ def intruder_alerts_html():
             {% endfor %}
             {% if alerts|length == 0 %}
             <tr>
-                <td colspan="3">Nema intruder alertova zabilježeno.</td>
+                <td colspan="3">No intruder alerts noted</td>
             </tr>
             {% endif %}
         </tbody>
@@ -687,13 +690,13 @@ def reload_dataset():
     known_face_names.clear()
     detection_log.clear()
 
-    logging.info("Ponovno učitavanje dataset-a...")
+    logging.info("Reloading dataset...")
     load_dataset()
 
-    logging.info("Ponovno gradnja FAISS indeksa...")
+    logging.info("Rebuilding FAISS index...")
     build_index()
 
-    return "Dataset i indeks su uspješno osvježeni!"
+    return "Dataset and index reloaded!"
 
 # === FUNKCIJA: should_classify(node_id, new_embedding) ===
 # Ulaz: node_id (npr. 0, 1, 2...), new_embedding (numpy array)
@@ -767,16 +770,16 @@ if __name__ == "__main__":
     known_face_encodings.clear()
     known_face_names.clear()
 
-    logging.info("Učitavanje poznatih lica...")
+    logging.info("Loading known faces...")
     load_dataset()
 
-    logging.info("Gradnja FAISS indeksa...")
+    logging.info("Building FAISS index...")
     build_index()
 
     
     port = int(os.getenv("PORT", 6010))
-    logging.info(f"Server pokrenut na portu {port}")
+    logging.info(f"Server running on port: {port}")
     worker_thread = threading.Thread(target=classify_worker, daemon=True)
     worker_thread.start()
-    logging.info("Worker thread dela")
+    logging.info("Worker thread up and running")
     app.run(host="0.0.0.0", port=port, debug=True)
