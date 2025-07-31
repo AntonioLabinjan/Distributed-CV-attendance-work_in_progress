@@ -35,7 +35,7 @@ def create_gui():
     window.title("Node Starter")
     window.geometry("300x400")
 
-    tk.Label(window, text="Distribuirani Nodeovi", font=("Helvetica", 14)).pack(pady=10)
+    tk.Label(window, text="Distributed Nodes", font=("Helvetica", 14)).pack(pady=10)
 
     for node_file in get_all_nodes():
         frame = tk.Frame(window)
