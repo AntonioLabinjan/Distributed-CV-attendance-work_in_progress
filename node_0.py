@@ -257,7 +257,7 @@ while True:
     # === Prikaz framea ===
     cv2.imshow("Distributed CV Node", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
-        logging.info("Prekid programa.")
+        logging.info("Program terminated.")
         break
 
 
