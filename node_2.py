@@ -35,9 +35,9 @@ logging.basicConfig(
 try:
     redis_client = redis.Redis(host='localhost', port=6379, db=0)
     redis_client.ping()
-    logging.info("Redis povezan uspjesno.")
+    logging.info("Successfully connected to Redis.")
 except redis.ConnectionError as e:
-    logging.error(f"Ne mogu se spojiti na Redis: {e}")
+    logging.error(f"Can't connect to Redis: {e}")
     exit(1)
 
 # === Config ===
@@ -150,15 +150,15 @@ for attempt in range(MAX_RETRIES):
     if health_check_ret and health_check_frame is not None and health_check_frame.size != 0:
         avg_brightness = np.mean(cv2.cvtColor(health_check_frame, cv2.COLOR_BGR2GRAY))
         if avg_brightness < TOO_DARK_THRESHOLD:
-            logging.warning(f"HEALTH CHECK: Inicijalni frame je pretaman (avg_brightness={avg_brightness:.2f}).")
+            logging.warning(f"HEALTH CHECK: Initial frame is too dark (avg_brightness={avg_brightness:.2f}).")
         else:
-            logging.info("HEALTH CHECK: Kamera uspješno prošla inicijalni test.")
+            logging.info("HEALTH CHECK: Camera passed initial test.")
         break
     else:
-        logging.info(f"HEALTH CHECK: Čekanje na aktivaciju kamere... (pokušaj {attempt + 1}/{MAX_RETRIES})")
+        logging.info(f"HEALTH CHECK: Waiting for camera activation... (attempt {attempt + 1}/{MAX_RETRIES})")
         time.sleep(RETRY_DELAY)
 else:
-    logging.critical("HEALTH CHECK: Kamera nije dohvatila validan frame ni nakon više pokušaja. Node se gasi.")
+    logging.critical("HEALTH CHECK: Camera couldn't fetch a valid frame even after multiple tries. Node shutting down.")
     cap.release()
     exit(1)
 
@@ -168,37 +168,37 @@ cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 if not cap.isOpened():
-    logging.error("Kamera se nije mogla otvoriti.")
+    logging.error("Couldn't open the camera.")
     exit(1)
 
-logging.info("Node pokrenut. Spreman za obradu...")
+logging.info("Node up and running...")
 
 while True:
     frame_start = time.time()
     ret, frame = cap.read()
     if not ret:
-        logging.warning("Nisam uspio dohvatiti frame.")
+        logging.warning("Couldn't fetvh initial frame.")
         continue
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     if is_too_dark(gray):
-        logging.warning("It's too dark — kamera ne vidi gotovo ništa.")
+        logging.warning("It's too dark — camera can't see a thing.")
         cv2.putText(frame, "Too damn dark!", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
     faces = face_cascade.detectMultiScale(gray, 1.1, 4)
 
     if len(faces) == 0:
-        logging.debug("Nema lica u frameu.")
+        logging.debug("No faces detected in frame.")
 
     for (x, y, w, h) in faces:
         face = frame[y:y + h, x:x + w]
         if face.size == 0:
-            logging.debug("Izdvojeno lice ima size 0.")
+            logging.debug("Extracted face has size 0.")
             continue
 
         face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
         segmented_face = segment_face(face_rgb)
         if segmented_face is None:
-            logging.debug("Segmentacija lica nije uspjela.")
+            logging.debug("Face segmentation failed.")
             continue
 
         inputs = processor(images=segmented_face, return_tensors="pt").to(device)
@@ -220,10 +220,10 @@ while True:
                 json_data = json.dumps(data)
                 redis_client.lpush("embedding_queue", json_data)
                 queue_size = redis_client.llen("embedding_queue")
-                logging.info(f"Embedding poslan u Redis queue. Queue size: {queue_size}")
-                logging.debug(f"JSON podatak: {json_data[:200]}...")
+                logging.info(f"Embedding sent to Redis queue. Queue size: {queue_size}")
+                logging.debug(f"JSON data: {json_data[:200]}...")
             except Exception as e:
-                logging.error(f"Greska pri slanju u Redis: {e}")
+                logging.error(f"Error sending to Redis: {e}")
 
         # === UI prikaz ===
         with last_message_lock:
@@ -249,7 +249,7 @@ while True:
             with open("latency_log_node_2.txt", "a") as latency_file:
                 latency_file.write(log_line + "\n")
         except Exception as e:
-            logging.error(f"Greska pri pisanju u latency_log.txt: {e}")
+            logging.error(f"Error writing into latency_log.txt: {e}")
 
 
         frame_count = 0
@@ -259,7 +259,7 @@ while True:
     # === Prikaz framea ===
     cv2.imshow("Distributed CV Node", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
-        logging.info("Prekid programa.")
+        logging.info("Program terminated.")
         break
 
 
