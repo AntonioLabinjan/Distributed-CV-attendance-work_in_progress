@@ -4,6 +4,7 @@
 # server.py
 # to pull this: docker pull antoniolabinjan/face-rec-central_server:latest
 # to run this: docker run -p 6010:6010 face-rec-central_server_6010
+# ovo migrirat na fastapi, a nodesi bi trebali bit ok
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
@@ -783,3 +784,4 @@ if __name__ == "__main__":
     worker_thread.start()
     logging.info("Worker thread up and running")
     app.run(host="0.0.0.0", port=port, debug=True)
+
