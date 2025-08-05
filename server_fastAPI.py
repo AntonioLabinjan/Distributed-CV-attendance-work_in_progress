@@ -1,0 +1,1 @@
+print("TU ĆE DOĆ FASTAPI SERVER")
