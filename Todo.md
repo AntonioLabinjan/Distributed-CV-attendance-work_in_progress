@@ -4,8 +4,8 @@
 - [ ] Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije
-- [ ] Flask->FastAPI migracija za server; na nodesima ne triba I think
 - [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
+- ✅ ~~Flask->FastAPI migracija za server; na nodesima ne triba I think~~
 - ✅ ~~Roknut kod od nodesa na eng~~
 - ✅[~~idealno će bit spremit server url u env pa ga vadit iz enva...pridonosi skalabilnosti jer onda lakše dodamo novi node bez da imamo pojma di se server vrti(ZAJEB...ne spreman server url nikamo jer je redis middleware između nodesa i servera) - > u env ćemo stavit: threshold distance i threshold time iz nodesa i app.run paramse iz server.py~~
 - ✅ ~~Centralizirat FPS/Latency monitor za sve nodese (sve metrike na 1 mistu) => better; posebni log file za svaki node...nema smisla da se loga u 1 file, pa da triban scrollat ko štupido...praktičnije je ovako~~
