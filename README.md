@@ -100,7 +100,7 @@ Each node is responsible for:
 | ---------------- | ------------------------------------- |
 | Embedding Model  | CLIP (`openai/clip-vit-base-patch32`) |
 | Classifier       | FAISS (L2 similarity search)          |
-| Web Interface    | Flask + JavaScript                    |
+| Web Interface    | FastAPI + JavaScript                    |
 | Face Detection   | OpenCV Haar Cascade                   |
 | Communication    | HTTP (JSON over REST API)             |
 | Parallelism      | Python threading + Queue module       |
@@ -255,4 +255,4 @@ Node
 Antonio Labinjan
 [GitHub: AntonioLabinjan](https://github.com/AntonioLabinjan)
 
-Dockerhub deployment: https://hub.docker.com/repository/docker/antoniolabinjan/face-rec-central_server/general
+Dockerhub deployment: https://hub.docker.com/repository/docker/antoniolabinjan/face-rec-central_server/general - > deprecated
