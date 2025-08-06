@@ -5,6 +5,10 @@
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] (Future) API token autentikacija za sigurnost komunikacije - > dodat neki credential u node i onda kad šalje nešto na server, server brzinski provjeri dali request sadrži taj credential (vidit dali da stavljan JWT ili nešto jednostavnije) - > pošto je redis middleware, ta provjera se svakako odvija unitar classify worker jer on vadi iz redisa. Server ima listu approved tokena i brzinski provjerava dali je request poslan s validnog nodea
 Definitivno svaki node ima unique credentials...nema smisla da postoji neki common
+
+Ovo gore je ok za početak, ali:
+
+Taj security se svodi na 2 čitanja iz enva. Bolje da složimo da se kreira jwt pri paljenju nodea i šalje se serveru pri initial healthchecku. Server lipo ima listu allowed tokena i to brzinski provjerava svaki put kad dobije request
 - [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
 - ✅ ~~Flask->FastAPI migracija za server; na nodesima ne triba I think~~
 - ✅ ~~Roknut kod od nodesa na eng~~
