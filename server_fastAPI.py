@@ -10,9 +10,10 @@ from transformers import CLIPProcessor, CLIPModel
 import cv2
 from datetime import datetime, timedelta
 import redis
-from fastapi import FastAPI
+import json
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-
+from pydantic import BaseModel
 from scipy.spatial.distance import cosine
 
 # Logging konfiguracija
@@ -47,6 +48,33 @@ thresholds_to_test = [
 ]
 threshold_stats = {th: [] for th in thresholds_to_test}
 
+
+def load_all_tokens(folder="credentials"):
+    tokens = {}
+    for filename in os.listdir(folder):
+        if filename.startswith("node_") and filename.endswith("_token.json"):
+            with open(os.path.join(folder, filename)) as f:
+                data = json.load(f)
+                tokens[str(data["node_id"])] = data["token"]
+    return tokens
+
+VALID_TOKENS = load_all_tokens()
+
+class TokenRequest(BaseModel):
+    token: str
+
+class TokenResponse(BaseModel):
+    valid: bool
+    node_id: str | None = None
+    error: str | None = None
+
+@app.post("/check-token", response_model=TokenResponse)
+async def check_token(data: TokenRequest):
+    input_token = data.token
+    for node_id, stored_token in VALID_TOKENS.items():
+        if stored_token == input_token:
+            return {"valid": True, "node_id": node_id}
+    return {"valid": False, "error": "Token not recognized"}
 
 
 @app.get("/redis-test")
@@ -245,7 +273,6 @@ from pydantic import BaseModel
 import numpy as np
 import json
 
-app = FastAPI()
 
 # === Pydantic model za validaciju ulaznih podataka ===
 class EmbeddingRequest(BaseModel):
@@ -313,7 +340,6 @@ def should_classify(node_id, new_embedding):
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, HTMLResponse
 
-app = FastAPI()
 
 @app.get("/log")
 def view_log():
@@ -815,8 +841,8 @@ def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
-    port = 8001
+    port = 8000
     logging.info(f"Server running on port: {port}")
-    uvicorn.run("server_FASTAPI:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("server_FASTAPI:app", host="0.0.0.0", port=8000, reload=True)
 
 
