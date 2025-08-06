@@ -1,5 +1,8 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
+Autorizacija zahtjeva: Token šalješ u HTTP headeru pod nazivom x-node-token (npr. x-node-token: tvoj_token_ovdje), a ne u tijelu (body) zahtjeva. => za TC testing
+
+Provjera tokena: Server uspoređuje taj header token s validnim tokenima učitanim iz JSON fajlova i samo ako je token prepoznat dopušta daljnju obradu.
 
 This repository contains a scalable system for distributed face recognition using multiple client nodes and a central server. Each node extracts face embeddings using a CLIP model and sends them to the server, which handles classification and logging using a FAISS index of known faces.
 
