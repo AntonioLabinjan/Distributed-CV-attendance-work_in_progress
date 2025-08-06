@@ -4,6 +4,7 @@ Autorizacija zahtjeva: Token šalješ u HTTP headeru pod nazivom x-node-token (n
 
 Provjera tokena: Server uspoređuje taj header token s validnim tokenima učitanim iz JSON fajlova i samo ako je token prepoznat dopušta daljnju obradu.
 
+A u real time worku, se to provjerava automatski i ako je falši, samo će puknut hehe
 This repository contains a scalable system for distributed face recognition using multiple client nodes and a central server. Each node extracts face embeddings using a CLIP model and sends them to the server, which handles classification and logging using a FAISS index of known faces.
 
 ---
