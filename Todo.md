@@ -3,7 +3,7 @@
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
 - [ ] Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan
 - [ ] Test skripte za sve rute + `pytest` test suite
-- [ ] (Future) API token autentikacija za sigurnost komunikacije - > dodat neki credential u node i onda kad šalje nešto na server, server brzinski provjeri dali request sadrži taj credential (vidit dali da stavljan JWT ili nešto jednostavnije) 
+- [ ] (Future) API token autentikacija za sigurnost komunikacije - > dodat neki credential u node i onda kad šalje nešto na server, server brzinski provjeri dali request sadrži taj credential (vidit dali da stavljan JWT ili nešto jednostavnije) - > pošto je redis middleware, ta provjera se svakako odvija unitar classify worker jer on vadi iz redisa
 - [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
 - ✅ ~~Flask->FastAPI migracija za server; na nodesima ne triba I think~~
 - ✅ ~~Roknut kod od nodesa na eng~~
