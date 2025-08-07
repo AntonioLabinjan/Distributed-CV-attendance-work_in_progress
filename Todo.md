@@ -1,7 +1,7 @@
 ## 🛠️ TODO – Upcoming Improvements
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
-- [ ] Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan
+- ❌ Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan - > dali ovo ima smisla? Koji će mi to k realno? Server pukne i onda kad se nazad upali, klasificira osobu koja je pred po ure bila pred kameron...useless
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] DONEKLE IMPLEMENTIRANO (Future) API token autentikacija za sigurnost komunikacije - > dodat neki credential u node i onda kad šalje nešto na server, server brzinski provjeri dali request sadrži taj credential (vidit dali da stavljan JWT ili nešto jednostavnije) - > pošto je redis middleware, ta provjera se svakako odvija unitar classify worker jer on vadi iz redisa. Server ima listu approved tokena i brzinski provjerava dali je request poslan s validnog nodea
 Definitivno svaki node ima unique credentials...nema smisla da postoji neki common
