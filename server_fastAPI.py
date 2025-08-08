@@ -11,7 +11,7 @@ import cv2
 from datetime import datetime, timedelta
 import redis
 import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from scipy.spatial.distance import cosine
@@ -68,13 +68,6 @@ class TokenResponse(BaseModel):
     node_id: str | None = None
     error: str | None = None
 
-@app.post("/check-token", response_model=TokenResponse)
-async def check_token(data: TokenRequest):
-    input_token = data.token
-    for node_id, stored_token in VALID_TOKENS.items():
-        if stored_token == input_token:
-            return {"valid": True, "node_id": node_id}
-    return {"valid": False, "error": "Token not recognized"}
 
 
 @app.get("/redis-test")
@@ -279,11 +272,27 @@ class EmbeddingRequest(BaseModel):
     embedding: list[float]
     node_id: int = 0
 
+from fastapi import Header, HTTPException
+
+
 @app.post("/classify")
-async def classify_api(data: EmbeddingRequest):
+async def classify_api(
+    data: EmbeddingRequest,
+    x_node_token: str = Header(..., alias="X-Node-Token")
+):
+    # === Provjera tokena ===
+    node_id = str(data.node_id)
+    expected_token = VALID_TOKENS.get(node_id)
+
+    if expected_token is None:
+        raise HTTPException(status_code=403, detail=f"Unknown node_id: {node_id}")
+
+    if x_node_token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid token for this node_id")
+
+    # === Normalizacija vektora ===
     embedding = np.array(data.embedding)
     embedding /= np.linalg.norm(embedding)
-    node_id = data.node_id
 
     # === Trigger klasifikacije samo ako treba ===
     if should_classify(node_id, embedding):
@@ -296,7 +305,6 @@ async def classify_api(data: EmbeddingRequest):
         return JSONResponse(content={"message": f"Node {node_id}: embedding received and sent to classification."})
     else:
         return JSONResponse(content={"message": f"Node {node_id}: classification skipped (embedding too similar to last one)."})
-
 
 
 from datetime import datetime, timedelta
@@ -554,9 +562,31 @@ def threshold_stats_view():
     rendered_html = template.render(summary=summary)
     return HTMLResponse(content=rendered_html)
 
+'''
 @app.get("/ping")
 def ping():
     return {"message": "FASTAPI Server is up and running"}
+'''
+@app.get("/ping")
+def ping():
+    try:
+        # Primjer provjere ako želiš pingati neki servis (dummy logika)
+        # npr. if not redis_connection.ping(): raise Exception("Redis not responding")
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "FASTAPI Server is up and running", "status": "healthy"}
+        )
+    except ConnectionError:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"message": "Dependent service unavailable", "status": "degraded"}
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": f"Unexpected error: {str(e)}", "status": "error"}
+        )
 
 from fastapi.responses import HTMLResponse
 from jinja2 import Template
