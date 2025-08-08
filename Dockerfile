@@ -8,14 +8,16 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Kopiraj ostatak projekta
+# 4. Kopiraj cijeli projekt
 COPY . .
 
-# 5. Učitaj env varijable (ako koristiš python-dotenv, FastAPI će ih automatski pročitati iz .env ako to ručno napraviš u kodu)
-# Ako želiš da Docker direktno koristi ENV, koristi ENV naredbu (alternativa)
-# ENV MY_SECRET=12345 
+# 5. Kopiraj dodatne foldere (dataset i credentials)
+# (Ova naredba će biti redundantna ako su ti već u rootu i uključeni u COPY . .,
+# ali dodajemo je za sigurnost/čist primjer.)
+COPY dataset/ dataset/
+COPY credentials/ credentials/
 
-# 6. Expose porta (FastAPI default)
+# 6. Expose porta
 EXPOSE 8000
 
 # 7. Pokreni aplikaciju
