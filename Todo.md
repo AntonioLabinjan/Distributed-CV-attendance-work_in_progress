@@ -1,5 +1,7 @@
 ## 🛠️ TODO – Upcoming Improvements
+
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
+- [ ] Provat deployat server na dockerhub
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
 - ❌ Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan - > dali ovo ima smisla? Koji će mi to k realno? Server pukne i onda kad se nazad upali, klasificira osobu koja je pred po ure bila pred kameron...useless
 - [ ] Test skripte za sve rute + `pytest` test suite
