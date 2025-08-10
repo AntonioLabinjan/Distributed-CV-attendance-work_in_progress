@@ -112,18 +112,20 @@ def load_dataset():
         person_path = os.path.join(dataset_path, person)
         if not os.path.isdir(person_path):
             continue
-        for subdir in os.listdir(person_path):
-            subdir_path = os.path.join(person_path, subdir)
-            if not os.path.isdir(subdir_path):
+
+        train_path = os.path.join(person_path, "train_segm")
+        if not os.path.isdir(train_path):
+            continue
+
+        for img_file in os.listdir(train_path):
+            if not img_file.lower().endswith(('.png', '.jpg', '.jpeg')):
                 continue
-            for img_file in os.listdir(subdir_path):
-                if not img_file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    continue
-                img_path = os.path.join(subdir_path, img_file)
-                if os.path.isfile(img_path):
-                    add_known_face(img_path, person)
-                    known_faces.add(person)
-                    count += 1
+
+            img_path = os.path.join(train_path, img_file)
+            if os.path.isfile(img_path):
+                add_known_face(img_path, person)
+                known_faces.add(person)
+                count += 1
 
     logging.info(f"Loaded {count} known faces.")
     logging.info(f"Known face class-names: {', '.join(sorted(known_faces))}")
