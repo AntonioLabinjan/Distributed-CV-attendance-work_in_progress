@@ -1,5 +1,5 @@
 ## 🛠️ TODO – Upcoming Improvements
-
+- [ ] Napravit kompletnu pipeline schemu od početka do kraja procesa
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] Provat deployat server na dockerhub
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
