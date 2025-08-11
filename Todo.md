@@ -1,5 +1,4 @@
 ## 🛠️ TODO – Upcoming Improvements
-- [ ] Napravit kompletnu pipeline schemu od početka do kraja procesa
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] Provat deployat server na dockerhub
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
@@ -8,6 +7,7 @@
 - [ ] Poigrat se malo s dockeron i njegovima mogućnostima sad kad je i novi server gore
 - ✅ ~~Provat primjenit segmentaciju i na loading poznatih lici - > might boost precision~~  https://github.com/AntonioLabinjan/Image-Segmentator
 - ✅ ~~DONEKLE IMPLEMENTIRANO (Future) API token autentikacija za sigurnost komunikacije - > dodat neki credential u node i onda kad šalje nešto na server, server brzinski provjeri dali request sadrži taj credential (vidit dali da stavljan JWT ili nešto jednostavnije) - > pošto je redis middleware, ta provjera se svakako odvija unitar classify worker jer on vadi iz redisa. Server ima listu approved tokena i brzinski provjerava dali je request poslan s validnog nodea~~
+- ✅ ~~Napravit kompletnu pipeline schemu od početka do kraja procesa~~
 Definitivno svaki node ima unique credentials...nema smisla da postoji neki common
 
 Ovo gore je ok za početak, ali:
