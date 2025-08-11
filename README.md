@@ -1,5 +1,8 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
+U browseru otpiren ovo: http://127.0.0.1:8000/log/html
+
+
 Autorizacija zahtjeva: Token šalješ u HTTP headeru pod nazivom x-node-token (npr. x-node-token: tvoj_token_ovdje), a ne u tijelu (body) zahtjeva. => za TC testing
 
 Provjera tokena: Server uspoređuje taj header token s validnim tokenima učitanim iz JSON fajlova i samo ako je token prepoznat dopušta daljnju obradu.
