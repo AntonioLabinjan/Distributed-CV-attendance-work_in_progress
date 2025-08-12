@@ -5,15 +5,16 @@
 - ❌ Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan - > dali ovo ima smisla? Koji će mi to k realno? Server pukne i onda kad se nazad upali, klasificira osobu koja je pred po ure bila pred kameron...useless
 - [ ] Test skripte za sve rute + `pytest` test suite
 - [ ] Poigrat se malo s dockeron i njegovima mogućnostima sad kad je i novi server gore
-- ✅ ~~Provat primjenit segmentaciju i na loading poznatih lici - > might boost precision~~  https://github.com/AntonioLabinjan/Image-Segmentator
-- ✅ ~~DONEKLE IMPLEMENTIRANO (Future) API token autentikacija za sigurnost komunikacije - > dodat neki credential u node i onda kad šalje nešto na server, server brzinski provjeri dali request sadrži taj credential (vidit dali da stavljan JWT ili nešto jednostavnije) - > pošto je redis middleware, ta provjera se svakako odvija unitar classify worker jer on vadi iz redisa. Server ima listu approved tokena i brzinski provjerava dali je request poslan s validnog nodea~~
-- ✅ ~~Napravit kompletnu pipeline schemu od početka do kraja procesa~~
+- [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
+- [ ] (Future) API token autentikacija za sigurnost komunikacije - > dodat neki credential u node i onda kad šalje nešto na server, server brzinski provjeri dali request sadrži taj credential (vidit dali da stavljan JWT ili nešto jednostavnije) - > pošto je redis middleware, ta provjera se svakako odvija unitar classify worker jer on vadi iz redisa. Server ima listu approved tokena i brzinski provjerava dali je request poslan s validnog nodea => ovo fixat; ona varijanta s jsonima ni bila nikako dobra
 Definitivno svaki node ima unique credentials...nema smisla da postoji neki common
 
 Ovo gore je ok za početak, ali:
 
 Taj security se svodi na 2 čitanja iz enva. Bolje da složimo da se kreira jwt pri paljenju nodea i šalje se serveru pri initial healthchecku. Server lipo ima listu allowed tokena i to brzinski provjerava svaki put kad dobije request
-- [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
+- ✅ ~~Napravit kompletnu pipeline schemu od početka do kraja procesa~~
+- ✅ ~~Implementirat counter per node~~
+- ✅ ~~Provat primjenit segmentaciju i na loading poznatih lici - > might boost precision~~  https://github.com/AntonioLabinjan/Image-Segmentator
 - ✅ ~~Flask->FastAPI migracija za server; na nodesima ne triba I think~~
 - ✅ ~~Roknut kod od nodesa na eng~~
 - ✅[~~idealno će bit spremit server url u env pa ga vadit iz enva...pridonosi skalabilnosti jer onda lakše dodamo novi node bez da imamo pojma di se server vrti(ZAJEB...ne spreman server url nikamo jer je redis middleware između nodesa i servera) - > u env ćemo stavit: threshold distance i threshold time iz nodesa i app.run paramse iz server.py~~
