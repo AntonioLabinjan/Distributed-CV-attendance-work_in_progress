@@ -297,32 +297,36 @@ async def classify_api(
     data: EmbeddingRequest,
     x_node_token: str = Header(..., alias="X-Node-Token")
 ):
+    # === Provjera tokena ===
     node_id = str(data.node_id)
     expected_token = VALID_TOKENS.get(node_id)
 
     if expected_token is None:
-        send_global_log("FaceLog", node_id, "REJECTED: Unknown node_id")
         raise HTTPException(status_code=403, detail=f"Unknown node_id: {node_id}")
 
     if x_node_token != expected_token:
-        send_global_log("FaceLog", node_id, "REJECTED: Invalid token")
         raise HTTPException(status_code=403, detail="Invalid token for this node_id")
 
+    # === Normalizacija vektora ===
     embedding = np.array(data.embedding)
     embedding /= np.linalg.norm(embedding)
 
-    if should_classify(node_id, embedding):
-        message = json.dumps({
-            "embedding": embedding.tolist(),
-            "node_id": node_id,
-            "retries": 0
-        })
-        redis_client.lpush("embedding_queue", message)
-        send_global_log("FaceLog", node_id, "Embedding accepted and sent to classification")
-        return JSONResponse(content={"message": f"Node {node_id}: embedding received and sent to classification."})
-    else:
-        send_global_log("FaceLog", node_id, "Embedding skipped (too similar or too soon)")
-        return JSONResponse(content={"message": f"Node {node_id}: classification skipped (embedding too similar to last one)."})
+    # === Brojanje detekcija ===
+    print("does it increment?")
+    increment_detection(node_id)  # brojimo uvijek
+
+    # === Slanje embeddinga na klasifikaciju ===
+    message = json.dumps({
+        "embedding": embedding.tolist(),
+        "node_id": node_id,
+        "retries": 0
+    })
+    print("increment?")
+    redis_client.lpush("embedding_queue", message)
+
+    return JSONResponse(content={"message": f"Node {node_id}: embedding received and sent to classification."})
+
+
 
 
 from datetime import datetime, timedelta
