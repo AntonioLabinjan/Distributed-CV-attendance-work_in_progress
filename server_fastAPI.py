@@ -614,19 +614,26 @@ from fastapi.responses import HTMLResponse
 from jinja2 import Template
 from datetime import datetime, timedelta
 
+from collections import Counter
+
 @app.get("/active_nodes/html", response_class=HTMLResponse)
 def active_nodes_html():
     active_threshold_seconds = 60
     now = datetime.now()
 
     recent_nodes = {}
+    node_counts = Counter()
+
+    # Prođi unazad kroz log i skupimo aktivne nodeove i broj detekcija po nodeu
     for entry in reversed(detection_log):
         try:
             entry_time = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
         except:
             continue
+
         if now - entry_time <= timedelta(seconds=active_threshold_seconds):
             node_id = entry["node_id"]
+            node_counts[node_id] += 1  # brojimo detekcije
             if node_id not in recent_nodes:
                 recent_nodes[node_id] = entry_time
         else:
@@ -638,59 +645,55 @@ def active_nodes_html():
     <head>
         <meta charset="utf-8">
         <title>Aktivni Nodesi</title>
-          <style>
-        :root {
-            --bg-main: #121212;
-            --bg-card: #1e1e1e;
-            --bg-header: #1f1f1f;
-            --text-main: #e0e0e0;
-            --border: #333;
-            --active-color: #388e3c33; /* light green background for active row */
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        table {
-            border-collapse: collapse;
-            width: 50%;
-            margin: auto;
-            background-color: var(--bg-card);
-            color: var(--text-main);
-        }
-
-        th, td {
-            border: 1px solid var(--border);
-            padding: 10px;
-            text-align: center;
-        }
-
-        th {
-            background-color: var(--bg-header);
-            color: #fff;
-        }
-
-        .active {
-            background-color: var(--active-color);
-        }
-    </style>
+        <style>
+            /* ... tvoj stil ovdje ... */
+            :root {
+                --bg-main: #121212;
+                --bg-card: #1e1e1e;
+                --bg-header: #1f1f1f;
+                --text-main: #e0e0e0;
+                --border: #333;
+                --active-color: #388e3c33;
+            }
+            body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                background-color: var(--bg-main);
+                color: var(--text-main);
+            }
+            h1 {
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+            table {
+                border-collapse: collapse;
+                width: 60%;
+                margin: auto;
+                background-color: var(--bg-card);
+                color: var(--text-main);
+            }
+            th, td {
+                border: 1px solid var(--border);
+                padding: 10px;
+                text-align: center;
+            }
+            th {
+                background-color: var(--bg-header);
+                color: #fff;
+            }
+            .active {
+                background-color: var(--active-color);
+            }
+        </style>
     </head>
     <body>
-        <h1 style="text-align:center;">Active Nodes (Last {{threshold}} seconds)</h1>
+        <h1>Active Nodes (Last {{threshold}} seconds)</h1>
         <table>
             <thead>
                 <tr>
                     <th>Node ID</th>
                     <th>Last seen</th>
+                    <th>Detection Count</th>
                 </tr>
             </thead>
             <tbody>
@@ -698,22 +701,30 @@ def active_nodes_html():
                 <tr class="active">
                     <td>{{ node_id }}</td>
                     <td>{{ last_seen.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+                    <td>{{ node_counts[node_id] }}</td>
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="2" style="color: grey;">No active nodes in last {{threshold}} seconds.</td>
+                    <td colspan="3" style="color: grey;">No active nodes in last {{threshold}} seconds.</td>
                 </tr>
             {% endfor %}
             </tbody>
         </table>
-        <p style="text-align:center; margin-top: 20px;">Total num of active nodes: <b>{{ recent_nodes|length }}</b></p>
+        <p style="text-align:center; margin-top: 20px;">
+            Total num of active nodes: <b>{{ recent_nodes|length }}</b>
+        </p>
     </body>
     </html>
     """
 
     template = Template(html)
-    rendered_html = template.render(recent_nodes=recent_nodes, threshold=active_threshold_seconds)
+    rendered_html = template.render(
+        recent_nodes=recent_nodes,
+        node_counts=node_counts,
+        threshold=active_threshold_seconds
+    )
     return HTMLResponse(content=rendered_html)
+
 
 from fastapi.responses import JSONResponse
 
