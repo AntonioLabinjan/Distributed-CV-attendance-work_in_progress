@@ -15,6 +15,41 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from scipy.spatial.distance import cosine
+from datetime import datetime
+import threading
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import numpy as np
+import json
+from fastapi import Header, HTTPException
+from datetime import datetime, timedelta
+from scipy.spatial.distance import cosine
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse
+from jinja2 import Template
+from fastapi.responses import HTMLResponse
+from jinja2 import Template
+from datetime import datetime, timedelta
+from fastapi.responses import PlainTextResponse
+from collections import Counter
+from datetime import datetime, timedelta
+from fastapi.responses import HTMLResponse
+from fastapi import FastAPI
+from jinja2 import Template
+
+from fastapi.responses import HTMLResponse
+from jinja2 import Template
+import redis
+import json
+import numpy as np
+
+from datetime import datetime, timedelta
+from scipy.spatial.distance import cosine
+import uvicorn
 
 # Logging konfiguracija
 logging.basicConfig(
@@ -43,7 +78,7 @@ detection_log = []
 redis_client = redis.Redis(host='localhost', port=6379, db=0)  # prilagodi port ako treba
 
 
-from datetime import datetime
+
 
 def send_global_log(name: str, node_id: str, event: str):
     try:
@@ -200,9 +235,6 @@ def check_for_intruder_alert(timestamp_str, node_id, window_seconds=30, threshol
         unknown_attempts.clear()  # reset za novi prozor
 
 # === Worker koji obrađuje queue ===
-import redis
-import json
-import numpy as np
 
 MAX_RETRIES = 3
 
@@ -274,14 +306,6 @@ def classify_worker():
                     logging.error(f" Dead-letter fallback failed. Error: {e2}")
 
 
-import threading
-
-
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-import numpy as np
-import json
 
 
 # === Pydantic model za validaciju ulaznih podataka ===
@@ -289,7 +313,7 @@ class EmbeddingRequest(BaseModel):
     embedding: list[float]
     node_id: int = 0
 
-from fastapi import Header, HTTPException
+
 
 
 @app.post("/classify")
@@ -329,9 +353,6 @@ async def classify_api(
 
 
 
-from datetime import datetime, timedelta
-from scipy.spatial.distance import cosine
-
 # === Globalni trackeri po nodeu ===
 last_embedding_per_node = {}      # npr. {0: np.array([...])}
 last_timestamp_per_node = {}      # npr. {0: datetime object}
@@ -366,10 +387,6 @@ def should_classify(node_id, new_embedding):
 
     # === 4. Inače: preskoči klasifikaciju ===
     return False
-
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse, HTMLResponse
-
 
 @app.get("/log")
 def view_log():
@@ -475,13 +492,12 @@ def view_log_html():
 </html>
     """
 
-from fastapi.responses import RedirectResponse
+
 
 @app.get("/")
 def home():
     return RedirectResponse(url="/log/html")
 
-from fastapi.responses import JSONResponse
 
 @app.get("/queue_contents")
 def get_queue_contents():
@@ -501,8 +517,6 @@ def get_queue_contents():
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-from fastapi.responses import HTMLResponse
-from jinja2 import Template
 
 @app.get("/threshold_stats", response_class=HTMLResponse)
 def threshold_stats_view():
@@ -609,16 +623,6 @@ def ping():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": f"Unexpected error: {str(e)}", "status": "error"}
         )
-
-from fastapi.responses import HTMLResponse
-from jinja2 import Template
-from datetime import datetime, timedelta
-
-from collections import Counter
-from datetime import datetime, timedelta
-from fastapi.responses import HTMLResponse
-from fastapi import FastAPI
-from jinja2 import Template
 
 
 detection_log = []  # pretpostavljam da ovo već puniš drugdje
@@ -733,15 +737,10 @@ def active_nodes_html():
     return HTMLResponse(content=rendered_html)
 
 
-
-from fastapi.responses import JSONResponse
-
 @app.get("/intruder_alerts")
 def get_intruder_alerts():
     return JSONResponse(content=intruder_alerts)
 
-from fastapi.responses import HTMLResponse
-from jinja2 import Template
 
 @app.get("/intruder_alerts/html", response_class=HTMLResponse)
 def intruder_alerts_html():
@@ -838,7 +837,7 @@ def intruder_alerts_html():
     rendered_html = template.render(alerts=intruder_alerts)
     return HTMLResponse(content=rendered_html)
 
-from fastapi.responses import PlainTextResponse
+
 
 @app.get("/reload_dataset", response_class=PlainTextResponse)
 def reload_dataset():
@@ -856,8 +855,6 @@ def reload_dataset():
 
     return "Dataset and index reloaded!"
 
-from datetime import datetime, timedelta
-from scipy.spatial.distance import cosine
 
 # === Globalni trackeri po nodeu ===
 last_embedding_per_node = {}      # npr. {0: np.array([...])}
@@ -911,7 +908,6 @@ def startup_event():
     logging.info("Started Redis classify worker thread.")
 
 if __name__ == "__main__":
-    import uvicorn
     port = 8000
     logging.info(f"Server running on port: {port}")
     uvicorn.run("server_FASTAPI:app", host="0.0.0.0", port=8000, reload=True)
