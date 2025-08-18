@@ -615,6 +615,13 @@ from jinja2 import Template
 from datetime import datetime, timedelta
 
 from collections import Counter
+from datetime import datetime, timedelta
+from fastapi.responses import HTMLResponse
+from fastapi import FastAPI
+from jinja2 import Template
+
+
+detection_log = []  # pretpostavljam da ovo već puniš drugdje
 
 @app.get("/active_nodes/html", response_class=HTMLResponse)
 def active_nodes_html():
@@ -624,7 +631,6 @@ def active_nodes_html():
     recent_nodes = {}
     node_counts = Counter()
 
-    # Prođi unazad kroz log i skupimo aktivne nodeove i broj detekcija po nodeu
     for entry in reversed(detection_log):
         try:
             entry_time = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
@@ -633,7 +639,7 @@ def active_nodes_html():
 
         if now - entry_time <= timedelta(seconds=active_threshold_seconds):
             node_id = entry["node_id"]
-            node_counts[node_id] += 1  # brojimo detekcije
+            node_counts[node_id] += 1
             if node_id not in recent_nodes:
                 recent_nodes[node_id] = entry_time
         else:
@@ -646,7 +652,6 @@ def active_nodes_html():
         <meta charset="utf-8">
         <title>Aktivni Nodesi</title>
         <style>
-            /* ... tvoj stil ovdje ... */
             :root {
                 --bg-main: #121212;
                 --bg-card: #1e1e1e;
@@ -697,17 +702,19 @@ def active_nodes_html():
                 </tr>
             </thead>
             <tbody>
-            {% for node_id, last_seen in recent_nodes.items() %}
+            {% if recent_nodes %}
+                {% for node_id, last_seen in recent_nodes.items() %}
                 <tr class="active">
                     <td>{{ node_id }}</td>
                     <td>{{ last_seen.strftime("%Y-%m-%d %H:%M:%S") }}</td>
                     <td>{{ node_counts[node_id] }}</td>
                 </tr>
+                {% endfor %}
             {% else %}
                 <tr>
                     <td colspan="3" style="color: grey;">No active nodes in last {{threshold}} seconds.</td>
                 </tr>
-            {% endfor %}
+            {% endif %}
             </tbody>
         </table>
         <p style="text-align:center; margin-top: 20px;">
@@ -724,6 +731,7 @@ def active_nodes_html():
         threshold=active_threshold_seconds
     )
     return HTMLResponse(content=rendered_html)
+
 
 
 from fastapi.responses import JSONResponse
