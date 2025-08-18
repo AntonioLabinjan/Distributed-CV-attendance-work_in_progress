@@ -1,55 +1,33 @@
+# fastapi imports
+from fastapi import FastAPI, HTTPException, status, Request, Header
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, PlainTextResponse
+from pydantic import BaseModel
+import uvicorn
+from jinja2 import Template
+
+# db imports
+import redis
+
+# faceRec system imports
+import faiss
+from transformers import CLIPProcessor, CLIPModel
+import cv2
+import numpy as np
+import torch
+from scipy.spatial.distance import cosine
+
+
+# other python imports
+import logging
+from datetime import datetime, timedelta
+import json
+import threading
+from collections import Counter
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 
-import logging
-import torch
-import numpy as np
-import faiss
-from transformers import CLIPProcessor, CLIPModel
-import cv2
-from datetime import datetime, timedelta
-import redis
-import json
-from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from scipy.spatial.distance import cosine
-from datetime import datetime
-import threading
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-import numpy as np
-import json
-from fastapi import Header, HTTPException
-from datetime import datetime, timedelta
-from scipy.spatial.distance import cosine
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.responses import RedirectResponse
-from fastapi.responses import JSONResponse
-from fastapi.responses import HTMLResponse
-from jinja2 import Template
-from fastapi.responses import HTMLResponse
-from jinja2 import Template
-from datetime import datetime, timedelta
-from fastapi.responses import PlainTextResponse
-from collections import Counter
-from datetime import datetime, timedelta
-from fastapi.responses import HTMLResponse
-from fastapi import FastAPI
-from jinja2 import Template
 
-from fastapi.responses import HTMLResponse
-from jinja2 import Template
-import redis
-import json
-import numpy as np
-
-from datetime import datetime, timedelta
-from scipy.spatial.distance import cosine
-import uvicorn
 
 # Logging konfiguracija
 logging.basicConfig(
