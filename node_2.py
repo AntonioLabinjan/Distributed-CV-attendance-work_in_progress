@@ -143,7 +143,6 @@ cap = cv2.VideoCapture(2)
 
 # === Health check kamere ===
 # === Health check kamere ===
-import time
 
 MAX_RETRIES = 500
 RETRY_DELAY = 1  # sekundi
