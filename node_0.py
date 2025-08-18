@@ -141,7 +141,7 @@ def is_too_dark(gray_frame):
 cap = cv2.VideoCapture(0)
 
 # === Health check kamere ===
-import time
+
 
 MAX_RETRIES = 500
 RETRY_DELAY = 1  # sekundi
@@ -268,3 +268,4 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 logging.info("Node clean shutdown.")
+
