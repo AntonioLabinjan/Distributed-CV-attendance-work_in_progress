@@ -14,19 +14,52 @@ Ovo gore je ok za početak, ali:
 
 Taj security se svodi na 2 čitanja iz enva. Bolje da složimo da se kreira jwt pri paljenju nodea i šalje se serveru pri initial healthchecku. Server lipo ima listu allowed tokena i to brzinski provjerava svaki put kad dobije request
 
-- [ ] Trigger suspicious event
 
-[ ] Attach embedding to gossip message
+Evo ti čist i jasan flow za global unknown alert s gossip + consensus:
 
-[ ] Distribute gossip among peers
+[ ] Detekcija unknown osobe na nodeu
 
-[ ] Cross-check embeddings
+Node vidi nepoznatu osobu → generira embedding.
 
-[ ] Majority voting / suspicion aggregation
 
-[ ] Global action on alert
+[ ] Gossip embeddinga
 
-[ ] GDPR check
+Node šalje embedding i event info peer nodeovima.
+
+
+[ ] Primanje gossip informacija
+
+Node primi embedding od drugih nodeova → usporedi s vlastitim embeddingima.
+
+
+[ ] Potvrda pojave
+
+Ako similarity > threshold → node potvrđuje da je ista unknown osoba.
+
+
+[ ] Širenje potvrde kroz gossip
+
+Node širi svoju potvrdu dalje peerovima.
+
+
+[ ] Distributed consensus
+
+Kad broj nezavisnih potvrda (nodeova) ≥ k → consensus je postignut.
+
+
+[ ] Global alert
+
+Aktivira se globalni alert za tu unknown osobu.
+
+Event se logira i/ili šalje serveru ili monitoring sustavu.
+
+
+[ ] Opcionalno
+
+Update suspicion score za tu osobu i eventualno privremeno povećanje security thresholda na svim nodeovima.
+
+
+
 
 
 
