@@ -13,6 +13,23 @@ Definitivno svaki node ima unique credentials...nema smisla da postoji neki comm
 Ovo gore je ok za početak, ali:
 
 Taj security se svodi na 2 čitanja iz enva. Bolje da složimo da se kreira jwt pri paljenju nodea i šalje se serveru pri initial healthchecku. Server lipo ima listu allowed tokena i to brzinski provjerava svaki put kad dobije request
+
+- [ ] Trigger suspicious event
+
+[ ] Attach embedding to gossip message
+
+[ ] Distribute gossip among peers
+
+[ ] Cross-check embeddings
+
+[ ] Majority voting / suspicion aggregation
+
+[ ] Global action on alert
+
+[ ] GDPR check
+
+
+
 - ✅ ~~Napravit kompletnu pipeline schemu od početka do kraja procesa~~
 - ✅ ~~Implementirat counter per node~~
 - ✅ ~~Provat primjenit segmentaciju i na loading poznatih lici - > might boost precision~~  https://github.com/AntonioLabinjan/Image-Segmentator
