@@ -47,6 +47,14 @@ NODE_ID = 0
 THRESHOLD_DISTANCE = float(os.getenv("THRESHOLD_DISTANCE", 0.2))
 THRESHOLD_TIME = timedelta(seconds=int(os.getenv("THRESHOLD_TIME_SECONDS", 30)))
 
+
+TOO_DARK_THRESHOLD = 20  # average brightness (0-255)
+TOO_DARK_CONSEC_FRAMES = 10
+too_dark_counter = 0
+frame_count = 0
+start_time = time.time()
+latency_measurements = []
+
 # === State for classification ===
 last_embedding_per_node = {}
 last_timestamp_per_node = {}
@@ -74,6 +82,17 @@ face_mesh = mp_face_mesh.FaceMesh(
 # === UI state ===
 last_message = f"node {NODE_ID}: detection successful"
 last_message_lock = threading.Lock()
+
+
+# === Kamera setup ===
+
+cap = cv2.VideoCapture(0)
+
+# === Health check kamere ===
+
+
+MAX_RETRIES = 500
+RETRY_DELAY = 1  # sekundi
 
 # === Segmentacija lica ===
 def segment_face(image_rgb):
@@ -118,12 +137,6 @@ def should_classify(node_id, new_embedding):
 
     return False
 
-TOO_DARK_THRESHOLD = 20  # average brightness (0-255)
-TOO_DARK_CONSEC_FRAMES = 10
-too_dark_counter = 0
-frame_count = 0
-start_time = time.time()
-latency_measurements = []
 
 
 def is_too_dark(gray_frame):
@@ -136,16 +149,7 @@ def is_too_dark(gray_frame):
     return too_dark_counter >= TOO_DARK_CONSEC_FRAMES
 
 
-# === Kamera setup ===
-
-cap = cv2.VideoCapture(0)
-
-# === Health check kamere ===
-
-
-MAX_RETRIES = 500
-RETRY_DELAY = 1  # sekundi
-
+# health check
 for attempt in range(MAX_RETRIES):
     health_check_ret, health_check_frame = cap.read()
     if health_check_ret and health_check_frame is not None and health_check_frame.size != 0:
@@ -268,4 +272,5 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 logging.info("Node clean shutdown.")
+
 
