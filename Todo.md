@@ -1,4 +1,5 @@
 ## 🛠️ TODO – Upcoming Improvements
+- [ ] napravit cleaning na nodesima malo
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] Provat deployat server na dockerhub
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
