@@ -2,7 +2,8 @@
 
 
 Ovaj novi consenzus algo će bit samo za unknown; za prepoznavanje već imamo dobar algo
-U browseru otpiren ovo: http://127.0.0.1:8000/log/html
+
+- U browseru otpiren ovo: http://127.0.0.1:8000/log/html
 
 
 Autorizacija zahtjeva: Token šalješ u HTTP headeru pod nazivom x-node-token (npr. x-node-token: tvoj_token_ovdje), a ne u tijelu (body) zahtjeva. => za TC testing
