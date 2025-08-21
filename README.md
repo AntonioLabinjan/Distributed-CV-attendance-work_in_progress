@@ -1,7 +1,7 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
 
-Ovaj novi consenzus algo će bit samo za unknown; za prepoznavanje već imamo dobar algo
+Ovaj novi consenzus algo će bit samo za unknown alert; za prepoznavanje već imamo dobar algo
 
 - U browseru otpiren ovo: http://127.0.0.1:8000/log/html
 
