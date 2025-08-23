@@ -2,6 +2,7 @@
 
 
 CONSENZUS ALGORITMI NEMAJU SMISLA KAD POSTOJI CENTRALNI SERVER !!!!
+Ovo tu je centralizirani distribuirani sustav
 
 - U browseru otpiren ovo: http://127.0.0.1:8000/log/html
 
