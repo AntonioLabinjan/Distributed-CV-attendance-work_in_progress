@@ -58,7 +58,7 @@ Event se logira i/ili šalje serveru ili monitoring sustavu.
 
 Update suspicion score za tu osobu i eventualno privremeno povećanje security thresholda na svim nodeovima.
 
-
+Šaljemo nepoznat embedding, warning i listu nodeva koji su ga vidili. Ako je node koji dobije poruku vidija taj embedding +- određeni threshold onda samo appenda još i sebe u listu. Ako duljina liste pasa određenu količinu (npr. 50% nodeva reče da je vidilo), raisa se global warning 
 
 
 
