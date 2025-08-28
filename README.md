@@ -1,5 +1,6 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
+Krenut pisat malo detaljniji specs
 
 CONSENZUS ALGORITMI NEMAJU SMISLA KAD POSTOJI CENTRALNI SERVER !!!!
 Ovo tu je centralizirani distribuirani sustav
