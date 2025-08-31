@@ -230,6 +230,11 @@ def classify_worker():
             node_id = data["node_id"]
             retries = data.get("retries", 0)
 
+            # === NOVO: should_classify cutoff ===
+            if not should_classify(node_id, embedding):
+                logging.info(f" Skipping classification for node {node_id} (too similar/recent).")
+                continue
+
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             best_result = ("Unknown", 0, 0.0)  # name, votes, threshold
 
@@ -287,6 +292,7 @@ def classify_worker():
 
 
 
+
 # === Pydantic model za validaciju ulaznih podataka ===
 class EmbeddingRequest(BaseModel):
     embedding: list[float]
@@ -300,6 +306,7 @@ async def classify_api(
     data: EmbeddingRequest,
     x_node_token: str = Header(..., alias="X-Node-Token")
 ):
+   
     # === Provjera tokena ===
     node_id = str(data.node_id)
     expected_token = VALID_TOKENS.get(node_id)
@@ -313,7 +320,6 @@ async def classify_api(
     # === Normalizacija vektora ===
     embedding = np.array(data.embedding)
     embedding /= np.linalg.norm(embedding)
-
 
 
     # === Slanje embeddinga na klasifikaciju ===
@@ -832,41 +838,6 @@ def reload_dataset():
 
     return "Dataset and index reloaded!"
 
-
-# === Globalni trackeri po nodeu ===
-last_embedding_per_node = {}      # npr. {0: np.array([...])}
-last_timestamp_per_node = {}      # npr. {0: datetime object}
-
-# === Parametri koji se lako fino štimaju ===
-THRESHOLD_DISTANCE = 0.2          # Ako je embedding značajno različit → klasificiraj
-THRESHOLD_TIME = timedelta(seconds=30)  # Ako je prošlo više vremena → klasificiraj opet
-
-def should_classify(node_id, new_embedding):
-    current_time = datetime.now()
-
-    # === 1. Prvi put za ovaj node? ===
-    if node_id not in last_embedding_per_node:
-        last_embedding_per_node[node_id] = new_embedding
-        last_timestamp_per_node[node_id] = current_time
-        return True
-
-    # === 2. Udaljenost između novog i zadnjeg embeddinga ===
-    prev_embedding = last_embedding_per_node[node_id]
-    dist = cosine(new_embedding, prev_embedding)
-
-    if dist > THRESHOLD_DISTANCE:
-        last_embedding_per_node[node_id] = new_embedding
-        last_timestamp_per_node[node_id] = current_time
-        return True
-
-    # === 3. Ako je sličan embedding, ali prošlo je puno vremena ===
-    prev_time = last_timestamp_per_node[node_id]
-    if current_time - prev_time > THRESHOLD_TIME:
-        last_timestamp_per_node[node_id] = current_time
-        return True
-
-    # === 4. Inače: preskoči klasifikaciju ===
-    return False
 
 @app.on_event("startup")
 def startup_event():
