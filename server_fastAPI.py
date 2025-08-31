@@ -1,3 +1,4 @@
+
 # fastapi imports
 from fastapi import FastAPI, HTTPException, status, Request, Header
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, PlainTextResponse
@@ -313,9 +314,7 @@ async def classify_api(
     embedding = np.array(data.embedding)
     embedding /= np.linalg.norm(embedding)
 
-    # === Brojanje detekcija ===
-    print("does it increment?")
-    increment_detection(node_id)  # brojimo uvijek
+
 
     # === Slanje embeddinga na klasifikaciju ===
     message = json.dumps({
@@ -889,5 +888,3 @@ if __name__ == "__main__":
     port = 8000
     logging.info(f"Server running on port: {port}")
     uvicorn.run("server_FASTAPI:app", host="0.0.0.0", port=8000, reload=True)
-
-
