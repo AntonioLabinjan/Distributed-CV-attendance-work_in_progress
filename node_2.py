@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 load_dotenv()  # učitaj iz .env datoteke
 # === Token setup ===
-with open("credentials/node_2_token.json") as f:
+with open("credentials/node_0_token.json") as f:
     TOKEN = json.load(f)["token"]
 
 # === Env setup ===
@@ -93,6 +93,38 @@ cap = cv2.VideoCapture(2)
 
 MAX_RETRIES = 500
 RETRY_DELAY = 1  # sekundi
+
+
+def draw_fancy_bbox(frame, x, y, w, h, color=(0, 255, 0)):
+    overlay = frame.copy()
+    alpha = 0.3
+
+    # poluprozirni fill
+    cv2.rectangle(overlay, (x, y), (x + w, y + h), color, -1)
+    cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+
+    # corner lines
+    line_len = int(min(w, h) * 0.3)
+    thickness = 3
+
+    # top-left
+    cv2.line(frame, (x, y), (x + line_len, y), color, thickness)
+    cv2.line(frame, (x, y), (x, y + line_len), color, thickness)
+
+    # top-right
+    cv2.line(frame, (x + w, y), (x + w - line_len, y), color, thickness)
+    cv2.line(frame, (x + w, y), (x + w, y + line_len), color, thickness)
+
+    # bottom-left
+    cv2.line(frame, (x, y + h), (x + line_len, y + h), color, thickness)
+    cv2.line(frame, (x, y + h), (x, y + h - line_len), color, thickness)
+
+    # bottom-right
+    cv2.line(frame, (x + w, y + h), (x + w - line_len, y + h), color, thickness)
+    cv2.line(frame, (x + w, y + h), (x + w, y + h - line_len), color, thickness)
+
+    return frame
+
 
 # === Segmentacija lica ===
 def segment_face(image_rgb):
@@ -234,7 +266,8 @@ while True:
         # === UI prikaz ===
         with last_message_lock:
             display_message = last_message
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        frame = draw_fancy_bbox(frame, x, y, w, h, color=(0, 255, 0))
+
         cv2.putText(frame, display_message, (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
@@ -272,4 +305,3 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 logging.info("Node clean shutdown.")
-
