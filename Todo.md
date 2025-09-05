@@ -1,5 +1,6 @@
 ## 🛠️ TODO – Upcoming Improvements
-- [ ] napravit da bbox zazeleni kad prepozna/pocrveni kad ne prepozna
+- [ ] identificirat potencijalne bottleneckove i bugove i popravit
+- ✅ napravit da bbox zazeleni kad prepozna/pocrveni kad ne prepozna
 - [ ] napravit cleaning na nodesima malo
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] Provat deployat server na dockerhub
