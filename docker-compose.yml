@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7.2
+    container_name: redis_service
+    ports:
+      - "6382:6379"
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build: .
+    container_name: server_service
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: always
