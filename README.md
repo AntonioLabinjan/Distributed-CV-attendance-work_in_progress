@@ -1,5 +1,13 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
+## IMPORTANT
+Tribalo bi hitit server na:
+docker-> dockerhub
+I onda napravit docker compose za server i redis skupa 
+I onda to pokrenut i gađat na taj docker link s nodesima
+
+
+
 Krenut pisat malo detaljniji specs
 
 CONSENZUS ALGORITMI NEMAJU SMISLA KAD POSTOJI CENTRALNI SERVER !!!!
