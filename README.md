@@ -2,6 +2,7 @@
 
 
 Docker compose not quite working yet
+Muy importante komanda: docker compose build --no-cache
 ## IMPORTANT
 Tribalo bi hitit server na:
 docker-> dockerhub
