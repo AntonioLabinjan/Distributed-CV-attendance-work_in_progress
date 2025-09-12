@@ -1,5 +1,7 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
+
+Docker compose not quite working yet
 ## IMPORTANT
 Tribalo bi hitit server na:
 docker-> dockerhub
