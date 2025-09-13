@@ -1,14 +1,7 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
 
-Docker compose not quite working yet
-Muy importante komanda: docker compose build --no-cache
-## IMPORTANT
-Tribalo bi hitit server na:
-docker-> dockerhub
-I onda napravit docker compose za server i redis skupa 
-I onda to pokrenut i gađat na taj docker link s nodesima
-
+Docker compose up i pokrene mi se lipo i server i redis i sve...i onda samo takat nodese i ciao
 
 
 Krenut pisat malo detaljniji specs
