@@ -35,7 +35,7 @@ logging.basicConfig(
 
 # === Redis setup ===
 try:
-    redis_client = redis.Redis(host='localhost', port=6379, db=0)
+    redis_client = redis.Redis(host='localhost', port=6382, db=0) # kad radimo s local serveron, port je 6379, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, port je 6382
     redis_client.ping()
     logging.info("Redis povezan uspjesno.")
 except redis.ConnectionError as e:
