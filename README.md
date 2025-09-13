@@ -1,7 +1,9 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
-
-Docker compose up i pokrene mi se lipo i server i redis i sve...i onda samo takat nodese i ciao
+'''python
+Docker compose up 
+'''
+i pokrene mi se lipo i server i redis i sve...i onda samo takat nodese i ciao
 More ovo: http://127.0.0.1:8000/log/html ili http://localhost:8000/log/html
 
 Krenut pisat malo detaljniji specs
