@@ -1,13 +1,11 @@
 ## 🛠️ TODO – Upcoming Improvements
 - [ ] identificirat potencijalne bottleneckove i bugove i popravit
-- ✅ napravit da bbox zazeleni kad prepozna/pocrveni kad ne prepozna
 - [ ] napravit cleaning na nodesima malo
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
 - [ ] Provat deployat server na dockerhub
 - [ ] CLI argumenti u `node.py` (`--node_id`, `--server`, `--cam_index`, itd.)
 - ❌ Failover mehanizam: čuvanje embeddinga offline ako je server nedostupan - > dali ovo ima smisla? Koji će mi to k realno? Server pukne i onda kad se nazad upali, klasificira osobu koja je pred po ure bila pred kameron...useless
 - [ ] Test skripte za sve rute + `pytest` test suite
-- [ ] Poigrat se malo s dockeron i njegovima mogućnostima sad kad je i novi server gore
 - [ ] Dinamičko skaliranje nodeova – svaki node lokalno prati aktivnost (npr. broj lica ili kretanja) i, ako detektira neaktivnost kroz određeno vrijeme, automatski se prebacuje u *idle mode* (pauzira model i obradu); čim ponovno otkrije aktivnost, reaktivira se za punu obradu
 - [ ] (Future) API token autentikacija za sigurnost komunikacije - > dodat neki credential u node i onda kad šalje nešto na server, server brzinski provjeri dali request sadrži taj credential (vidit dali da stavljan JWT ili nešto jednostavnije) - > pošto je redis middleware, ta provjera se svakako odvija unitar classify worker jer on vadi iz redisa. Server ima listu approved tokena i brzinski provjerava dali je request poslan s validnog nodea => ovo fixat; ona varijanta s jsonima ni bila nikako dobra....jwt it is after all
 Definitivno svaki node ima unique credentials...nema smisla da postoji neki common
@@ -18,7 +16,63 @@ Taj security se svodi na 2 čitanja iz enva. Bolje da složimo da se kreira jwt 
 
 
 
+Bitna ideja:
 
+🌍 Global Time Sync TODO
+
+Sve u UTC
+
+Node odmah pretvori svoj lokalni timestamp u UTC.
+
+Na serveru NIKAD ne koristi lokalno vrijeme → sve se sprema u UTC.
+
+Server šalje heartbeat (svakih X sekundi)
+
+Server šalje: current_utc_time.
+
+Node izračuna koliko mu kasni ili žuri sat (drift_offset).
+
+Node korigira svoj clock
+
+Node NE dira sistemski sat.
+
+Samo kod slanja eventa dodaje ili oduzima drift_offset na UTC timestamp.
+
+Event struktura (koja se šalje serveru)
+
+event_id (unikatni ID ili counter).
+
+utc_timestamp (vrijeme u UTC).
+
+local_time (vrijeme u zoni noda, samo za info/debug).
+
+timezone_offset (koliko sati/minuta iza/ahead UTC).
+
+drift_offset (koliko smo morali ispraviti clock).
+
+corrected_utc (finalno vrijeme koje se koristi).
+
+Server sve sprema po corrected_utc
+
+Ovo je jedini timestamp koji ulazi u logiku attendancea i alertinga.
+
+Prikaz korisniku
+
+Kod reporta/analitike → frontend konvertira corrected_utc u lokalno vrijeme korisnika (ovisno o njihovoj zoni).
+
+Fallback za ordering (Lamport clock)
+
+Svaki node ima counter koji se inkrementira za svaki event.
+
+Dodaj lamport_clock u event payload.
+
+Ako dođe do clock problema, server složi redoslijed eventa po tom counteru.
+
+Audit / Debug
+
+Čuvaj sve: originalni local_time, utc_timestamp, drift_offset, corrected_utc.
+
+To ti pomaže kad neko kaže “ali ja sam stigao na posao u 9h!!” pa možeš dokazati drift.
 
 - ✅ ~~Napravit kompletnu pipeline schemu od početka do kraja procesa~~
 - ✅ ~~Implementirat counter per node~~
@@ -41,3 +95,5 @@ Taj security se svodi na 2 čitanja iz enva. Bolje da složimo da se kreira jwt 
 - ✅ ~~Implementirat upozorenje ako je env premračan~~
 - ✅ ~~Snapshot spremanje slike prilikom slanja embeddinga (debug/dataset) => NI SLUČAJNO OVO IMPLEMENTIRAT; SLIKE DETEKCIJE SE NE POHRANJUJU!!!!!~~
 - ✅ ~~Implement FPS/Latency tracking~~
+- ✅ ~~Poigrat se malo s dockeron i njegovima mogućnostima sad kad je i novi server gore~~
+-  ✅~~napravit da bbox zazeleni kad prepozna/pocrveni kad ne prepozna~~
