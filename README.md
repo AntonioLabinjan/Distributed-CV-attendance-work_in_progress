@@ -10,7 +10,6 @@ More ovo: http://127.0.0.1:8000/log/html ili http://localhost:8000/log/html
 
 Krenut pisat malo detaljniji specs
 
-CONSENZUS ALGORITMI NEMAJU SMISLA KAD POSTOJI CENTRALNI SERVER !!!!
 Ovo tu je centralizirani distribuirani sustav
 
 
