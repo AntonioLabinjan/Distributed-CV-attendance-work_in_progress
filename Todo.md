@@ -16,7 +16,7 @@ Taj security se svodi na 2 čitanja iz enva. Bolje da složimo da se kreira jwt 
 
 
 
-Bitna ideja:
+Bitna ideja: - >×kad to napravin, redoat docker compose da server povuče promjene
 
 🌍 Global Time Sync TODO
 
