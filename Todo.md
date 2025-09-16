@@ -1,4 +1,5 @@
 ## 🛠️ TODO – Upcoming Improvements
+- [] implemenr fault tolerance
 - [ ] identificirat potencijalne bottleneckove i bugove i popravit
 - [ ] napravit cleaning na nodesima malo
 - [ ] Bolji `try/except` handling u nodu i serveru (posebno mrežni pozivi)
