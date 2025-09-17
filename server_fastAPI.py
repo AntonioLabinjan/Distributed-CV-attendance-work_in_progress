@@ -57,7 +57,7 @@ import os
 import redis
 
 redis_host = os.getenv("REDIS_HOST", "localhost")
-redis_port = int(os.getenv("REDIS_PORT", 6379))
+redis_port = int(os.getenv("REDIS_PORT", 6380)) # kad radimo s local serveron, port je 6379, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, port je 6382
 
 redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
 
@@ -88,8 +88,12 @@ def load_all_tokens(folder="credentials"):
         if filename.startswith("node_") and filename.endswith("_token.json"):
             with open(os.path.join(folder, filename)) as f:
                 data = json.load(f)
-                tokens[str(data["node_id"])] = data["token"]
+                tokens[str(data["node_id"])] = {
+                    "token": data["token"],
+                    "timezone": data.get("timezone", "UTC")
+                }
     return tokens
+
 
 VALID_TOKENS = load_all_tokens()
 
@@ -301,42 +305,6 @@ def classify_worker():
 class EmbeddingRequest(BaseModel):
     embedding: list[float]
     node_id: int = 0
-
-
-
-
-@app.post("/classify")
-async def classify_api(
-    data: EmbeddingRequest,
-    x_node_token: str = Header(..., alias="X-Node-Token")
-):
-   
-    # === Provjera tokena ===
-    node_id = str(data.node_id)
-    expected_token = VALID_TOKENS.get(node_id)
-
-    if expected_token is None:
-        raise HTTPException(status_code=403, detail=f"Unknown node_id: {node_id}")
-
-    if x_node_token != expected_token:
-        raise HTTPException(status_code=403, detail="Invalid token for this node_id")
-
-    # === Normalizacija vektora ===
-    embedding = np.array(data.embedding)
-    embedding /= np.linalg.norm(embedding)
-
-
-    # === Slanje embeddinga na klasifikaciju ===
-    message = json.dumps({
-        "embedding": embedding.tolist(),
-        "node_id": node_id,
-        "retries": 0
-    })
-    print("increment?")
-    redis_client.lpush("embedding_queue", message)
-
-    return JSONResponse(content={"message": f"Node {node_id}: embedding received and sent to classification."})
-
 
 
 
