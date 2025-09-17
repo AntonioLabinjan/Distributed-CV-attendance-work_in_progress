@@ -236,6 +236,7 @@ def classify_worker():
             data = json.loads(message)
             embedding = np.array(data["embedding"])
             node_id = data["node_id"]
+            timezone = data["timezone"]
             retries = data.get("retries", 0)
 
             # === NOVO: should_classify cutoff ===
@@ -257,7 +258,8 @@ def classify_worker():
                 "name": best_result[0],
                 "votes": best_result[1],
                 "node_id": node_id,
-                "used_threshold": best_result[2]
+                "used_threshold": best_result[2],
+                "timezone": timezone   # <-- dodano
             }
             detection_log.append(log_entry)
 
@@ -356,7 +358,6 @@ def view_log_html():
     <title>Face detection - Log</title>
     <meta charset="utf-8">
     <style>
-        /* Dark‑mode paleta */
         :root {
             --bg-main: #121212;
             --bg-card: #1e1e1e;
@@ -386,16 +387,9 @@ def view_log_html():
             text-align: left;
         }
 
-        th {
-            background: var(--bg-header);
-            color: #fff;
-        }
-
-        /* Malo zaobljenja za moderniji look (opcionalno) */
+        th { background: var(--bg-header); color: #fff; }
         table, th:first-child, td:first-child { border-left-width: 2px; }
         table, th:last-child,  td:last-child  { border-right-width: 2px; }
-        th:first-child, td:first-child { border-left-width: 2px; }
-        th:last-child,  td:last-child  { border-right-width: 2px; }
     </style>
 </head>
 <body>
@@ -408,6 +402,7 @@ def view_log_html():
                 <th>Score</th>
                 <th>Node ID</th>
                 <th>Threshold</th>
+                <th>Timezone</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -435,6 +430,7 @@ def view_log_html():
                     <td style="background-color: ${scoreColor}; font-weight: bold;">${entry.votes.toFixed(2)}</td>
                     <td>${entry.node_id}</td>
                     <td>${entry.used_threshold.toFixed(2)}</td>
+                    <td>${entry.timezone || "N/A"}</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -446,6 +442,7 @@ def view_log_html():
 </body>
 </html>
     """
+
 
 
 
