@@ -1,3 +1,4 @@
+# kad se servis pokrene kroz docker compose kaže krivo vrime...inače je ok
 services:
   redis:
     image: redis:7.2
