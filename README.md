@@ -19,6 +19,10 @@ Ovo tu je centralizirani distribuirani sustav
 
 STVAR NE FAILA AKO KAMERA SAMO CRKNE DOK SE SERVER VRTI <3
 BILO BI LIPO SPENSAT SAMO JOŠ NEKI NAČIN DA SE KAMERA USKRSNE BEZ RESTARTAT SERVER :)
+
+Actually to već iman...nodevi delaju neovisno o serveru 
+Bonus: ako server crkne, nodesi i dalje šalju u redis, pa imamo tamo podatke
+
 - U browseru otpiren ovo: http://127.0.0.1:8000/log/html
 
 
