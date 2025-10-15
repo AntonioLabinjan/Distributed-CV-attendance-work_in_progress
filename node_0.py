@@ -14,16 +14,13 @@ import time
 from dotenv import load_dotenv
 
 
-load_dotenv()  # učitaj iz .env datoteke
+load_dotenv()
 
-# === Token setup ===
 with open("credentials/node_0_token.json") as f:
     TOKEN = json.load(f)["token"]
 
-# === Env setup ===
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
-# === Logging setup ===
 logging.basicConfig(
     level=logging.DEBUG,
     format='[%(asctime)s] %(levelname)s - %(message)s',
@@ -34,36 +31,29 @@ logging.basicConfig(
     ]
 )
 
-    
-# === Redis setup ===
 try:
-    redis_client = redis.Redis(host='localhost', port=6380, db=0) # kad radimo s local serveron, port je 6380, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, port je 6382
+    redis_client = redis.Redis(host='localhost', port=6382, db=0) # kad radimo s local serveron, port je 6380, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, port je 6382
     redis_client.ping()
     logging.info("Redis povezan uspjesno.")
 except redis.ConnectionError as e:
     logging.error(f"Ne mogu se spojiti na Redis: {e}")
     exit(1)
 
-# === Config ===
 NODE_ID = 0
 THRESHOLD_DISTANCE = float(os.getenv("THRESHOLD_DISTANCE", 0.2))
 THRESHOLD_TIME = timedelta(seconds=int(os.getenv("THRESHOLD_TIME_SECONDS", 30)))
 
-# === State for classification ===
 last_embedding_per_node = {}
 last_timestamp_per_node = {}
 
-# === CLIP model ===
 device = "cuda" if torch.cuda.is_available() else "cpu"
 logging.info(f"Koristi se device: {device}")
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 model.eval()
 
-# === Face detection ===
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# === Face mesh ===
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(
     static_image_mode=False,
@@ -73,11 +63,9 @@ face_mesh = mp_face_mesh.FaceMesh(
     min_tracking_confidence=0.5
 )
 
-# === UI state ===
 last_message = f"node {NODE_ID}: detection successful"
 last_message_lock = threading.Lock()
 
-# === Segmentacija lica ===
 def segment_face(image_rgb):
     small_rgb = cv2.resize(image_rgb, (320, 240))
     results = face_mesh.process(small_rgb)
@@ -96,7 +84,6 @@ def segment_face(image_rgb):
     segmented_face = cv2.bitwise_and(image_rgb, image_rgb, mask=mask)
     return segmented_face
 
-# === Should Classify funkcija ===
 def should_classify(node_id, new_embedding):
     current_time = datetime.now()
 
@@ -137,9 +124,6 @@ def is_too_dark(gray_frame):
         too_dark_counter = 0
     return too_dark_counter >= TOO_DARK_CONSEC_FRAMES
 
-
-# === Kamera setup ===
-
 cap = cv2.VideoCapture(0)
 
 from datetime import datetime
@@ -147,9 +131,7 @@ import logging
 from zoneinfo import ZoneInfo
 import time
 
-# odmah nakon što podesiš logging:
 try:
-    # uzimamo lokalni timezone
     local_time = datetime.now().astimezone()
     timezone_name = local_time.tzname()
 
@@ -158,8 +140,6 @@ try:
 except Exception as e:
     logging.error(f"Greška pri dohvaćanju timezone informacija: {e}")
 
-
-# === Health check kamere ===
 # === Health check kamere ===
 import time
 
@@ -237,7 +217,7 @@ while True:
     "node_id": NODE_ID,
     "token": TOKEN,
     "retries": 0,
-    "timezone": timezone_name,        # ← ovo je ono što fali
+    "timezone": timezone_name,  
 }
 
             try:
@@ -248,15 +228,14 @@ while True:
                 logging.debug(f"JSON podatak: {json_data[:200]}...")
             except Exception as e:
                 logging.error(f"Greska pri slanju u Redis: {e}")
-
-        # === UI prikaz ===
+                
         with last_message_lock:
             display_message = last_message
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         cv2.putText(frame, display_message, (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
-    # === FPS & latencija mjerenje ===
+
     frame_end = time.time()
     latency = frame_end - frame_start
     latency_measurements.append(latency)
@@ -280,7 +259,6 @@ while True:
         start_time = time.time()
         latency_measurements = []
 
-    # === Prikaz framea ===
     cv2.imshow("Distributed CV Node", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
         logging.info("Prekid programa.")
