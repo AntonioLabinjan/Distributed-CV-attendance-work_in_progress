@@ -1,7 +1,6 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
-Provat ću spakirat nodese u .exe
-
+## ADD PROMETHEUS AND GRAFANA
 # kad radimo s local serveron, redis port je 6380, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, redis port je 6382
 
 Napsiat samo:
