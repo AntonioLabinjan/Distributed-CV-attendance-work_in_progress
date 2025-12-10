@@ -16,8 +16,18 @@ from dotenv import load_dotenv
 
 load_dotenv()  # učitaj iz .env datoteke
 
+'''
 # === Token setup ===
 with open("credentials/node_2_token.json") as f:
+    TOKEN = json.load(f)["token"]
+'''
+
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TOKEN_PATH = os.path.join(BASE_DIR, "credentials", "node_2_token.json")
+
+with open(TOKEN_PATH, "r") as f:
     TOKEN = json.load(f)["token"]
 
 # === Env setup ===
@@ -34,10 +44,9 @@ logging.basicConfig(
     ]
 )
 
-    
 # === Redis setup ===
 try:
-    redis_client = redis.Redis(host='localhost', port=6380, db=0) # kad radimo s local serveron, port je 6380, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, port je 6382
+    redis_client = redis.Redis(host='localhost', port=6379, db=0)
     redis_client.ping()
     logging.info("Redis povezan uspjesno.")
 except redis.ConnectionError as e:
@@ -142,23 +151,6 @@ def is_too_dark(gray_frame):
 
 cap = cv2.VideoCapture(2)
 
-from datetime import datetime
-import logging
-from zoneinfo import ZoneInfo
-import time
-
-# odmah nakon što podesiš logging:
-try:
-    # uzimamo lokalni timezone
-    local_time = datetime.now().astimezone()
-    timezone_name = local_time.tzname()
-
-    
-    logging.info(f"Node {NODE_ID} timezone: {timezone_name}")
-except Exception as e:
-    logging.error(f"Greška pri dohvaćanju timezone informacija: {e}")
-
-
 # === Health check kamere ===
 # === Health check kamere ===
 import time
@@ -233,12 +225,11 @@ while True:
 
         if should_classify(NODE_ID, embedding):
             data = {
-    "embedding": embedding.tolist(),
-    "node_id": NODE_ID,
-    "token": TOKEN,
-    "retries": 0,
-    "timezone": timezone_name,        # ← ovo je ono što fali
-}
+                "embedding": embedding.tolist(),
+                "node_id": NODE_ID,
+                "token": TOKEN,
+                "retries": 0
+            }
 
             try:
                 json_data = json.dumps(data)
@@ -270,7 +261,7 @@ while True:
         logging.info(log_line)
         
         try:
-            with open("latency_log_node_0.txt", "a") as latency_file:
+            with open("latency_log_node_2.txt", "a") as latency_file:
                 latency_file.write(log_line + "\n")
         except Exception as e:
             logging.error(f"Greska pri pisanju u latency_log.txt: {e}")
