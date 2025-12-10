@@ -16,7 +16,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-with open("credentials/node_0_token.json") as f:
+'''
+with open("./credentials/node_0_token.json") as f:
+    TOKEN = json.load(f)["token"]
+'''
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TOKEN_PATH = os.path.join(BASE_DIR, "credentials", "node_0_token.json")
+
+with open(TOKEN_PATH, "r") as f:
     TOKEN = json.load(f)["token"]
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -268,3 +276,4 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 logging.info("Node clean shutdown.")
+
