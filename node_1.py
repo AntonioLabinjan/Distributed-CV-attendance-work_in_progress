@@ -16,10 +16,16 @@ from dotenv import load_dotenv
 
 load_dotenv()  # učitaj iz .env datoteke
 
-# === Token setup ===
-with open("credentials/node_1_token.json") as f:
+'''
+with open("./credentials/node_1_token.json") as f:
     TOKEN = json.load(f)["token"]
+'''
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TOKEN_PATH = os.path.join(BASE_DIR, "credentials", "node_1_token.json")
+
+with open(TOKEN_PATH, "r") as f:
+    TOKEN = json.load(f)["token"]
 # === Env setup ===
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
