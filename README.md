@@ -1,6 +1,6 @@
 # Distributed Face Recognition System (CLIP + FAISS)
 
-!TODO: test multiple servers & multiple nodes
+# !TODO: test multiple servers & multiple nodes
 
 TO run stuff: venv\Scripts\activate
 # kad radimo s local serveron, redis port je 6380, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, redis port je 6382
