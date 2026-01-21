@@ -1,10 +1,12 @@
 # kad se servis pokrene kroz docker compose kaže krivo vrime...inače je ok
+version: "3.9"
+
 services:
   redis:
     image: redis:7.2
     container_name: redis_service
     ports:
-      - "6382:6379"
+      - "6382:6379"  # host port fiksno za Redis
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -14,9 +16,6 @@ services:
 
   server:
     build: .
-    container_name: server_service
-    ports:
-      - "8000:8000"
     depends_on:
       redis:
         condition: service_healthy
@@ -24,3 +23,5 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     restart: unless-stopped
+    ports:
+      - "8000"   # Docker automatski dodjeljuje slobodan host port
