@@ -57,7 +57,7 @@ import os
 import redis
 
 redis_host = os.getenv("REDIS_HOST", "localhost")
-redis_port = int(os.getenv("REDIS_PORT", 6380)) # kad radimo s local serveron, port je 6379, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, port je 6382
+redis_port = int(os.getenv("REDIS_PORT", 6380)) # kad radimo s local serveron, port je 6380, ali kad pokušavamo gađat na server koji se pokrene kroz docker compose, port je 6382
 
 redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
 
@@ -318,32 +318,35 @@ last_timestamp_per_node = {}      # npr. {0: datetime object}
 THRESHOLD_DISTANCE = 0.2          # Ako je embedding značajno različit → klasificiraj
 THRESHOLD_TIME = timedelta(seconds=30)  # Ako je prošlo više vremena → klasificiraj opet
 
-def should_classify(node_id, new_embedding):
-    current_time = datetime.now()
+import base64
+import pickle
 
-    # === 1. Prvi put za ovaj node? ===
-    if node_id not in last_embedding_per_node:
-        last_embedding_per_node[node_id] = new_embedding
-        last_timestamp_per_node[node_id] = current_time
+def should_classify(node_id, new_embedding):
+    current_time = datetime.now().timestamp()
+    key_embed = f"last_embedding:{node_id}"
+    key_time  = f"last_timestamp:{node_id}"
+
+    # dohvati iz Redis-a
+    prev_embed_b64 = redis_client.get(key_embed)
+    prev_time = redis_client.get(key_time)
+
+    if prev_embed_b64 is None or prev_time is None:
+        # prvi put za ovaj node
+        redis_client.set(key_embed, base64.b64encode(pickle.dumps(new_embedding)))
+        redis_client.set(key_time, current_time)
         return True
 
-    # === 2. Udaljenost između novog i zadnjeg embeddinga ===
-    prev_embedding = last_embedding_per_node[node_id]
+    prev_embedding = pickle.loads(base64.b64decode(prev_embed_b64))
     dist = cosine(new_embedding, prev_embedding)
 
-    if dist > THRESHOLD_DISTANCE:
-        last_embedding_per_node[node_id] = new_embedding
-        last_timestamp_per_node[node_id] = current_time
+    if dist > THRESHOLD_DISTANCE or (current_time - float(prev_time)) > THRESHOLD_TIME.total_seconds():
+        # update embedding i timestamp
+        redis_client.set(key_embed, base64.b64encode(pickle.dumps(new_embedding)))
+        redis_client.set(key_time, current_time)
         return True
 
-    # === 3. Ako je sličan embedding, ali prošlo je puno vremena ===
-    prev_time = last_timestamp_per_node[node_id]
-    if current_time - prev_time > THRESHOLD_TIME:
-        last_timestamp_per_node[node_id] = current_time
-        return True
-
-    # === 4. Inače: preskoči klasifikaciju ===
     return False
+
 
 @app.get("/log")
 def view_log():
